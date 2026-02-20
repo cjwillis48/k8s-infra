@@ -1,0 +1,52 @@
+---
+- name: Create K3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+- name: Write K3s server config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0600"
+  notify: restart k3s
+
+- name: Create audit policy directory
+  ansible.builtin.file:
+    path: /var/lib/rancher/k3s/server/audit
+    state: directory
+    mode: "0700"
+
+- name: Write audit policy
+  ansible.builtin.template:
+    src: audit-policy.yaml.j2
+    dest: /var/lib/rancher/k3s/server/audit/policy.yaml
+    mode: "0600"
+  notify: restart k3s
+
+- name: Check if K3s is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install K3s server
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
+  when: not k3s_binary.stat.exists
+  environment:
+    INSTALL_K3S_EXEC: "server"
+
+- name: Wait for K3s to be ready
+  ansible.builtin.command:
+    cmd: k3s kubectl get nodes
+  register: k3s_nodes
+  until: k3s_nodes.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Label server node
+  ansible.builtin.command:
+    cmd: k3s kubectl label node {{ k3s_server_hostname }} node-role=server --overwrite
+  changed_when: false

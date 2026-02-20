@@ -1,0 +1,43 @@
+---
+- name: Create K3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+- name: Write K3s agent config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    mode: "0600"
+  notify: restart k3s-agent
+
+- name: Check if K3s agent is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary
+
+- name: Install K3s agent
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
+  when: not k3s_binary.stat.exists
+  environment:
+    INSTALL_K3S_EXEC: "agent"
+    K3S_URL: "{{ k3s_server_url }}"
+    K3S_TOKEN: "{{ k3s_token }}"
+
+- name: Wait for agent to register with server
+  ansible.builtin.command:
+    cmd: k3s kubectl get node homie-k8s-node-2
+  delegate_to: homie-k8s-node-1
+  register: agent_node
+  until: agent_node.rc == 0
+  retries: 30
+  delay: 10
+  changed_when: false
+
+- name: Label agent node
+  ansible.builtin.command:
+    cmd: k3s kubectl label node homie-k8s-node-2 node-role=agent storage-tier=large --overwrite
+  delegate_to: homie-k8s-node-1
+  changed_when: false

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghost
+  namespace: ghost
+  labels:
+    app: ghost
+spec:
+  type: ClusterIP
+  selector:
+    app: ghost
+  ports:
+    - port: 2368
+      targetPort: 2368
+      protocol: TCP

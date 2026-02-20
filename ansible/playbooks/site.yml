@@ -1,0 +1,42 @@
+---
+# Full provisioning + deployment
+# Usage: ansible-playbook -i inventory/hosts.yml playbooks/site.yml
+
+- name: Provision all nodes (OS hardening + K3s)
+  import_playbook: provision.yml
+
+- name: Deploy K8s workloads
+  hosts: k3s_servers
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Wait for K3s API server to be ready
+      ansible.builtin.uri:
+        url: "https://{{ k3s_server_ip }}:6443/readyz"
+        validate_certs: false
+        status_code: 200
+      register: k3s_ready
+      until: k3s_ready.status == 200
+      retries: 30
+      delay: 10
+      delegate_to: localhost
+
+    - name: Apply namespace manifests
+      ansible.builtin.command:
+        cmd: kubectl apply -f ../../k8s/namespaces/
+      delegate_to: localhost
+
+    - name: Apply Ghost manifests
+      ansible.builtin.command:
+        cmd: kubectl apply -f ../../k8s/ghost/
+      delegate_to: localhost
+
+    - name: Apply Cloudflared manifests
+      ansible.builtin.command:
+        cmd: kubectl apply -f ../../k8s/cloudflared/
+      delegate_to: localhost
+
+    - name: Apply network policies
+      ansible.builtin.command:
+        cmd: kubectl apply -f ../../k8s/network-policies/
+      delegate_to: localhost

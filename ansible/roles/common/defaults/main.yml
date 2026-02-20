@@ -1,0 +1,18 @@
+---
+# SSH hardening
+ssh_allowed_user: "charlie"
+ssh_port: 22
+
+# Firewall
+vlan_cidr: "192.168.6.0/24"
+
+# Kernel modules required for K3s
+required_kernel_modules:
+  - br_netfilter
+  - overlay
+
+# Sysctl settings for K3s networking
+sysctl_settings:
+  net.bridge.bridge-nf-call-iptables: 1
+  net.bridge.bridge-nf-call-ip6tables: 1
+  net.ipv4.ip_forward: 1

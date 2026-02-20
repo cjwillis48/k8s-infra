@@ -1,0 +1,4 @@
+---
+k3s_version: "v1.31.4+k3s1"
+k3s_server_ip: "192.168.6.200"
+k3s_server_hostname: "homie-k8s-node-1"

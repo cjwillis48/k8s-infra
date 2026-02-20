@@ -1,0 +1,22 @@
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  # Don't log read-only requests to certain non-sensitive endpoints
+  - level: None
+    nonResourceURLs:
+      - "/healthz*"
+      - "/readyz*"
+      - "/livez*"
+      - "/metrics"
+  # Don't log watch requests (too noisy)
+  - level: None
+    verbs:
+      - watch
+  # Log secret access at metadata level (don't log secret data)
+  - level: Metadata
+    resources:
+      - group: ""
+        resources:
+          - secrets
+  # Log everything else at request level
+  - level: Request

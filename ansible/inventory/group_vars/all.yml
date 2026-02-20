@@ -1,0 +1,18 @@
+# K3s version
+k3s_version: "v1.31.4+k3s1"
+
+# K3s server URL (for agents to join)
+k3s_server_url: "https://192.168.6.200:6443"
+
+# VLAN 6 subnet (used for firewall rules)
+vlan_cidr: "192.168.6.0/24"
+
+# Management network (Mac's subnet, for SSH access)
+mgmt_cidr: "192.168.1.0/24"
+
+# SSH allowed user
+ssh_allowed_user: "charlie"
+
+# K3s server node
+k3s_server_ip: "192.168.6.200"
+k3s_server_hostname: "homie-k8s-node-1"

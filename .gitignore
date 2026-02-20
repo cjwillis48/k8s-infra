@@ -1,0 +1,35 @@
+# Age keys
+*.agekey
+keys.txt
+
+# Kubeconfig
+kubeconfig
+*.kubeconfig
+
+.claude
+
+# Ansible retry files
+*.retry
+
+# SOPS decrypted files
+*.dec.yml
+*.dec.yaml
+
+# macOS
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Terraform (in case added later)
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Environment files
+.env
+.env.*

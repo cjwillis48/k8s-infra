@@ -1,0 +1,45 @@
+---
+# Tear down K3s from all nodes
+# Usage: ansible-playbook -i inventory/hosts.yml playbooks/reset.yml
+
+- name: Reset K3s agents
+  hosts: k3s_agents
+  become: true
+  tasks:
+    - name: Check if K3s agent uninstall script exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s-agent-uninstall.sh
+      register: k3s_agent_uninstall
+
+    - name: Run K3s agent uninstall
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s-agent-uninstall.sh
+      when: k3s_agent_uninstall.stat.exists
+
+- name: Reset K3s server
+  hosts: k3s_servers
+  become: true
+  tasks:
+    - name: Check if K3s server uninstall script exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/k3s-uninstall.sh
+      register: k3s_server_uninstall
+
+    - name: Run K3s server uninstall
+      ansible.builtin.command:
+        cmd: /usr/local/bin/k3s-uninstall.sh
+      when: k3s_server_uninstall.stat.exists
+
+- name: Clean up all nodes
+  hosts: all
+  become: true
+  tasks:
+    - name: Remove K3s config directory
+      ansible.builtin.file:
+        path: /etc/rancher
+        state: absent
+
+    - name: Remove K3s data directory
+      ansible.builtin.file:
+        path: /var/lib/rancher
+        state: absent

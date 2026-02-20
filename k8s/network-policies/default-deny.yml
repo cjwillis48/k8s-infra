@@ -1,0 +1,22 @@
+---
+# Default deny all ingress in ghost namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: ghost
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Default deny all ingress in cloudflare namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: cloudflare
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

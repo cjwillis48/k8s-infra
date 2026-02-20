@@ -1,0 +1,14 @@
+token: "{{ k3s_token }}"
+tls-san:
+  - "{{ k3s_server_ip }}"
+  - "{{ k3s_server_hostname }}"
+disable:
+  - traefik
+  - servicelb
+kube-apiserver-arg:
+  - "audit-policy-file=/var/lib/rancher/k3s/server/audit/policy.yaml"
+  - "audit-log-path=/var/lib/rancher/k3s/server/audit/audit.log"
+  - "audit-log-maxage=30"
+  - "audit-log-maxbackup=10"
+  - "audit-log-maxsize=100"
+write-kubeconfig-mode: "0644"

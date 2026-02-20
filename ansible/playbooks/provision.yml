@@ -1,0 +1,21 @@
+---
+# OS hardening + K3s installation
+# Usage: ansible-playbook -i inventory/hosts.yml playbooks/provision.yml
+
+- name: Harden all nodes
+  hosts: all
+  become: true
+  roles:
+    - common
+
+- name: Install K3s server
+  hosts: k3s_servers
+  become: true
+  roles:
+    - k3s_server
+
+- name: Install K3s agent
+  hosts: k3s_agents
+  become: true
+  roles:
+    - k3s_agent
