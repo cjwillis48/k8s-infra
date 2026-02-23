@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ghost
-  namespace: ghost
+  namespace: blog
   labels:
     app: ghost
 spec:
@@ -39,8 +39,23 @@ spec:
               value: sqlite3
             - name: database__connection__filename
               value: /var/lib/ghost/content/data/ghost.db
-            # - name: url
-            #   value: https://blog2.charliewillis.com
+            - name: url
+              value: https://blog.charliewillis.com
+            - name: mail__transport
+              value: SMTP
+            - name: mail__options__host
+              value: smtp-relay.brevo.com
+            - name: mail__options__port
+              value: "587"
+            - name: mail__options__auth__user
+              value: a30355001@smtp-brevo.com
+            - name: mail__options__auth__pass
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-mail
+                  key: password
+            - name: mail__from
+              value: noreply@charliewillis.com
           volumeMounts:
             - name: ghost-data
               mountPath: /var/lib/ghost/content

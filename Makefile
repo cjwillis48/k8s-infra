@@ -16,6 +16,10 @@ provision:
 deploy: kubeconfig
 	kubectl apply -f k8s/namespaces/
 	kubectl apply -f k8s/ghost/
+	kubectl apply -f k8s/blog/deployment.yml
+	kubectl apply -f k8s/blog/pvc.yml
+	kubectl apply -f k8s/blog/service.yml
+	sops -d k8s/blog/mail-secret.sops.yml | kubectl apply -f -
 	kubectl apply -f k8s/cloudflared/deployment.yml
 	sops -d k8s/cloudflared/secret.sops.yml | kubectl apply -f -
 	kubectl apply -f k8s/network-policies/

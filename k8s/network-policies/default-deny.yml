@@ -10,6 +10,17 @@ spec:
   policyTypes:
     - Ingress
 ---
+# Default deny all ingress in blog namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: blog
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
 # Default deny all ingress in cloudflare namespace
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
