@@ -3,7 +3,7 @@ set -euo pipefail
 
 TUNNEL_NAME="k8s-ghost-blog"
 HOSTNAME="blog.charliewillis.com"
-SERVICE_URL="http://ghost.ghost.svc.cluster.local:2368"
+SERVICE_URL="http://ghost.blog.svc.cluster.local:2368"
 SECRET_FILE="$(cd "$(dirname "$0")/.." && pwd)/k8s/cloudflared/secret.sops.yml"
 
 echo "==> Cloudflare Tunnel Setup"

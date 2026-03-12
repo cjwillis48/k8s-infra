@@ -19,6 +19,7 @@ Internet → Cloudflare CDN → Cloudflare Tunnel → cloudflared pod → Ghost 
 |-------|-----------|
 | OS | Ubuntu 24.04 LTS (ARM64) |
 | K8s | K3s v1.31.4 |
+| GitOps | Argo CD (internal-only access) |
 | Blog | Ghost 5.x (SQLite) |
 | Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) |
 | Secrets | SOPS + age encryption |
@@ -36,14 +37,15 @@ k8s-infra/
 │       ├── k3s_server/     # Control plane install + config
 │       └── k3s_agent/      # Worker node install + join
 ├── k8s/
-│   ├── namespaces/         # ghost, cloudflare (restricted Pod Security Standards)
-│   ├── ghost/              # Deployment, Service, PVC
+│   ├── namespaces/         # blog, cloudflare, argocd (restricted Pod Security Standards)
+│   ├── argocd/             # Argo CD install payload (pinned upstream manifest)
 │   ├── cloudflared/        # Deployment + SOPS-encrypted tunnel secret
-│   └── network-policies/   # Default-deny + allow cloudflared→ghost only
+│   └── network-policies/   # Default-deny + explicit allow rules (cloudflared, argocd internal)
 ├── scripts/
 │   ├── bootstrap.sh        # Install Mac deps, generate age key
 │   ├── fetch-kubeconfig.sh # SCP kubeconfig from node-1
-│   └── setup-cf-tunnel.sh  # Create Cloudflare Tunnel interactively
+│   ├── setup-cf-tunnel.sh  # Create Cloudflare Tunnel interactively
+│   └── backup-blog.sh      # Backup blog content + sqlite db to local tarball
 ├── .sops.yaml              # SOPS age encryption config
 ├── Makefile                # Convenience targets
 └── PLAN.md                 # Original AI-generated infrastructure plan
@@ -79,6 +81,10 @@ make deploy
 
 # Verify
 make status
+make status-argocd
+
+# Backup blog content locally before risky changes
+make backup-blog
 ```
 
 ## Security
@@ -86,10 +92,71 @@ make status
 - **SSH**: key-only auth, no root login, `AllowUsers charlie`
 - **Firewall**: UFW deny-all incoming; allow SSH + K8s API from management network only
 - **fail2ban**: bans IPs after 3 failed SSH attempts
-- **Network policies**: default-deny in all namespaces; only cloudflared can reach Ghost
+- **Network policies**: default-deny in all namespaces with explicit allow rules only
 - **Pod Security Standards**: `restricted` profile enforced on all namespaces
 - **Secrets**: SOPS + age encrypted; never plaintext in git
 - **Containers**: non-root, all capabilities dropped, seccomp RuntimeDefault
+
+## Argo CD (Internal-Only)
+
+Argo CD runs in the `argocd` namespace and is deployed from `k8s/argocd/kustomization.yaml`.
+
+- **No public route**: Argo CD is not exposed through Cloudflare Tunnel.
+- **Access path**: use `kubectl port-forward` from your trusted management VLAN machine.
+- **Network isolation**: `argocd` namespace has default-deny ingress plus explicit in-namespace allow rules for component-to-component traffic.
+
+Deploy Argo CD:
+
+```bash
+make deploy-argocd
+```
+
+Access Argo CD UI/API locally:
+
+```bash
+kubectl -n argocd port-forward svc/argocd-server 8080:443
+```
+
+Open `https://localhost:8080` in your browser.
+
+Get the initial admin password:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 --decode && echo
+```
+
+After first login, rotate the admin password and disable/delete the initial secret when no longer needed.
+
+### Secrets with Argo-managed apps
+
+Keep SOPS secrets on the existing manual path for now:
+
+```bash
+sops -d k8s/blog/mail-secret.sops.yml | kubectl apply -f -
+```
+
+Argo should manage non-secret manifests from `k8s/blog` (Deployment, Service, PVC).
+
+## Backups
+
+Create a local Ghost backup tarball (content files + sqlite db):
+
+```bash
+make backup-blog
+```
+
+By default backups are written to `./backups/blog-backup-<timestamp>.tgz`.
+
+Verification checks:
+
+```bash
+kubectl get ns argocd
+kubectl -n argocd get pods
+kubectl -n argocd get svc argocd-server
+kubectl -n cloudflare get deploy cloudflared
+kubectl -n blog get pods
+```
 
 ## Teardown
 

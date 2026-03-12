@@ -1,4 +1,4 @@
-.PHONY: bootstrap provision deploy reset kubeconfig tunnel
+.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig tunnel status status-argocd
 
 ANSIBLE_DIR := ansible
 PLAYBOOK_DIR := $(ANSIBLE_DIR)/playbooks
@@ -15,7 +15,7 @@ provision:
 # Deploy all K8s manifests
 deploy: kubeconfig
 	kubectl apply -f k8s/namespaces/
-	kubectl apply -f k8s/ghost/
+	$(MAKE) deploy-argocd
 	kubectl apply -f k8s/blog/deployment.yml
 	kubectl apply -f k8s/blog/pvc.yml
 	kubectl apply -f k8s/blog/service.yml
@@ -23,6 +23,16 @@ deploy: kubeconfig
 	kubectl apply -f k8s/cloudflared/deployment.yml
 	sops -d k8s/cloudflared/secret.sops.yml | kubectl apply -f -
 	kubectl apply -f k8s/network-policies/
+
+# Deploy Argo CD platform components
+deploy-argocd:
+	kubectl apply -f k8s/namespaces/argocd.yml
+	kubectl apply -n argocd -k k8s/argocd/
+
+# Backup blog content and sqlite database locally
+backup-blog:
+	./scripts/backup-blog.sh
+
 
 # Full setup: provision nodes then deploy workloads
 site:
@@ -56,3 +66,9 @@ status:
 	kubectl get nodes -o wide
 	@echo ""
 	kubectl get pods -A
+
+# Check Argo CD component health
+status-argocd:
+	kubectl get ns argocd
+	kubectl -n argocd get pods
+	kubectl -n argocd get svc argocd-server

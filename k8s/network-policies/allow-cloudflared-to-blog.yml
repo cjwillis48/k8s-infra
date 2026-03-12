@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-cloudflared-to-ghost
+  name: allow-cloudflared-to-blog
   namespace: blog
 spec:
   podSelector:

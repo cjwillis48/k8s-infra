@@ -28,8 +28,8 @@ k8s-infra/
 │       ├── k3s_server/               # K3s server install (node-1)
 │       └── k3s_agent/                # K3s agent install (node-2)
 ├── k8s/
-│   ├── namespaces/                   # ghost.yml, cloudflare.yml
-│   ├── ghost/                        # deployment, service, pvc
+│   ├── namespaces/                   # blog.yml, cloudflare.yml
+│   ├── blog/                         # deployment, service, pvc
 │   ├── cloudflared/                  # deployment, encrypted secret
 │   └── network-policies/             # default-deny, allow rules
 └── scripts/
@@ -73,7 +73,7 @@ Apply to both nodes:
 
 ### Phase 4: Cloudflare Tunnel
 - Create tunnel in CF Zero Trust dashboard (remotely managed)
-- Configure public hostname: `blog.charliewillis.com` → `http://ghost.ghost.svc.cluster.local:2368`
+- Configure public hostname: `blog.charliewillis.com` → `http://ghost.blog.svc.cluster.local:2368`
 - Deploy cloudflared in-cluster with tunnel token (SOPS-encrypted)
 - Outbound-only on port 7844/QUIC — no inbound ports needed
 
@@ -86,7 +86,7 @@ Apply to both nodes:
 - ClusterIP service only (cloudflared connects internally)
 
 ### Phase 6: Network Policies & Hardening
-- Default-deny ingress in ghost and cloudflare namespaces
+- Default-deny ingress in blog and cloudflare namespaces
 - Allow cloudflared → ghost:2368 only
 - Pod Security Standards (`restricted` profile on namespaces)
 - `automountServiceAccountToken: false` on all workload pods
@@ -106,7 +106,7 @@ Apply to both nodes:
 Internet → Cloudflare CDN (blog.charliewillis.com)
          → Cloudflare Tunnel
          → cloudflared pod (outbound connection from cluster)
-         → ghost.ghost.svc.cluster.local:2368
+         → ghost.blog.svc.cluster.local:2368
          → Ghost pod
 ```
 
