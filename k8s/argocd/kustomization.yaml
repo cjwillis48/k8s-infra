@@ -10,6 +10,3 @@ resources:
   - apps/blog.yml
   - apps/cloudflared.yml
   - apps/sealed-secrets.yml
-
-patches:
-  - path: resource-limits.yml
