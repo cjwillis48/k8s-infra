@@ -27,11 +27,11 @@ spec:
         - name: argocd-repo-server
           resources:
             requests:
-              cpu: 15m
-              memory: 64Mi
-            limits:
               cpu: 50m
               memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
 ---
 apiVersion: apps/v1
 kind: Deployment
