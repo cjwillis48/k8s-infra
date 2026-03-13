@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: blog
+  namespace: argocd
+spec:
+  project: blog
+  source:
+    repoURL: git@github.com:cjwillis48/k8s-infra.git
+    targetRevision: main
+    path: k8s/blog
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: blog

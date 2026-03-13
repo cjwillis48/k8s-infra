@@ -1,4 +1,4 @@
-.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig tunnel status status-argocd
+.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig tunnel status status-argocd seal-secret
 
 ANSIBLE_DIR := ansible
 PLAYBOOK_DIR := $(ANSIBLE_DIR)/playbooks
@@ -12,22 +12,23 @@ bootstrap:
 provision:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbooks/provision.yml
 
-# Deploy all K8s manifests
+# Bootstrap cluster: namespaces, sealed-secrets controller, and ArgoCD (which manages everything else)
 deploy: kubeconfig
 	kubectl apply -f k8s/namespaces/
+	kubectl apply -k k8s/sealed-secrets/
 	$(MAKE) deploy-argocd
-	kubectl apply -f k8s/blog/deployment.yml
-	kubectl apply -f k8s/blog/pvc.yml
-	kubectl apply -f k8s/blog/service.yml
-	sops -d k8s/blog/mail-secret.sops.yml | kubectl apply -f -
-	kubectl apply -f k8s/cloudflared/deployment.yml
-	sops -d k8s/cloudflared/secret.sops.yml | kubectl apply -f -
-	kubectl apply -f k8s/network-policies/
 
 # Deploy Argo CD platform components
 deploy-argocd:
 	kubectl apply -f k8s/namespaces/argocd.yml
 	kubectl apply -n argocd -k k8s/argocd/
+
+# Seal a K8s secret using the controller's public cert
+# Usage: make seal-secret IN=path/to/secret.yml OUT=path/to/sealed.yml
+seal-secret:
+	kubeseal --format yaml \
+		--cert k8s/sealed-secrets/sealed-secrets-pub.pem \
+		< $(IN) > $(OUT)
 
 # Backup blog content and sqlite database locally
 backup-blog:
@@ -72,3 +73,4 @@ status-argocd:
 	kubectl get ns argocd
 	kubectl -n argocd get pods
 	kubectl -n argocd get svc argocd-server
+	kubectl -n argocd get applications

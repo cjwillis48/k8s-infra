@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo "==> Installing Mac prerequisites via Homebrew..."
-brew install ansible sops age helm kubectl cloudflared
+brew install ansible sops age helm kubectl cloudflared kubeseal
 
 AGE_KEY_DIR="${HOME}/Library/Application Support/sops/age"
 AGE_KEY_FILE="${AGE_KEY_DIR}/keys.txt"

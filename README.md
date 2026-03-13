@@ -19,10 +19,11 @@ Internet → Cloudflare CDN → Cloudflare Tunnel → cloudflared pod → Ghost 
 |-------|-----------|
 | OS | Ubuntu 24.04 LTS (ARM64) |
 | K8s | K3s v1.31.4 |
-| GitOps | Argo CD (internal-only access) |
+| GitOps | Argo CD (manual sync, internal-only access) |
 | Blog | Ghost 5.x (SQLite) |
 | Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) |
-| Secrets | SOPS + age encryption |
+| K8s Secrets | Bitnami Sealed Secrets (SealedSecret CRD, synced by ArgoCD) |
+| Ansible Secrets | SOPS + age encryption (provisioning only) |
 | Provisioning | Ansible |
 
 ## Repo Structure
@@ -38,15 +39,18 @@ k8s-infra/
 │       └── k3s_agent/      # Worker node install + join
 ├── k8s/
 │   ├── namespaces/         # blog, cloudflare, argocd (restricted Pod Security Standards)
-│   ├── argocd/             # Argo CD install payload (pinned upstream manifest)
-│   ├── cloudflared/        # Deployment + SOPS-encrypted tunnel secret
-│   └── network-policies/   # Default-deny + explicit allow rules (cloudflared, argocd internal)
+│   ├── argocd/             # Argo CD install + Application manifests
+│   │   └── apps/           # ArgoCD Application CRDs (blog, cloudflared, network-policies, sealed-secrets)
+│   ├── blog/               # Ghost deployment, service, PVC, sealed mail secret
+│   ├── cloudflared/        # Deployment + sealed tunnel token secret
+│   ├── sealed-secrets/     # Sealed Secrets controller (kustomize remote base)
+│   └── network-policies/   # Default-deny + explicit allow rules
 ├── scripts/
-│   ├── bootstrap.sh        # Install Mac deps, generate age key
+│   ├── bootstrap.sh        # Install Mac deps (incl. kubeseal), generate age key
 │   ├── fetch-kubeconfig.sh # SCP kubeconfig from node-1
 │   ├── setup-cf-tunnel.sh  # Create Cloudflare Tunnel interactively
 │   └── backup-blog.sh      # Backup blog content + sqlite db to local tarball
-├── .sops.yaml              # SOPS age encryption config
+├── .sops.yaml              # SOPS age encryption config (Ansible secrets only)
 ├── Makefile                # Convenience targets
 └── PLAN.md                 # Original AI-generated infrastructure plan
 ```
@@ -76,15 +80,40 @@ export KUBECONFIG=$(pwd)/kubeconfig
 # 5. Create Cloudflare Tunnel and encrypt token
 make tunnel
 
-# 6. Deploy Ghost + cloudflared + network policies
+# 6. Bootstrap cluster (namespaces + sealed-secrets controller + ArgoCD)
 make deploy
+
+# 7. Manually sync apps in ArgoCD UI or CLI
+kubectl -n argocd port-forward svc/argocd-server 8080:443
+# Open https://localhost:8080, sync each app
 
 # Verify
 make status
 make status-argocd
+```
 
-# Backup blog content locally before risky changes
-make backup-blog
+## Secrets
+
+### K8s Secrets — Sealed Secrets
+
+K8s secrets are managed via [Bitnami Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets). SealedSecret resources are safe to commit to git — they can only be decrypted by the controller running in the cluster.
+
+To seal a new secret:
+
+```bash
+# Create a regular K8s Secret YAML, then seal it
+make seal-secret IN=path/to/secret.yml OUT=path/to/sealed.yml
+```
+
+The controller's public cert is stored at `k8s/sealed-secrets/sealed-secrets-pub.pem` for offline sealing.
+
+### Ansible Secrets — SOPS + age
+
+Ansible provisioning secrets (e.g., `ansible/inventory/group_vars/all.sops.yml`) are encrypted with SOPS + age. These are used only during Ansible runs and never touch ArgoCD.
+
+```bash
+make decrypt-secrets   # Decrypt for editing
+make encrypt-secrets   # Re-encrypt after editing
 ```
 
 ## Security
@@ -94,22 +123,16 @@ make backup-blog
 - **fail2ban**: bans IPs after 3 failed SSH attempts
 - **Network policies**: default-deny in all namespaces with explicit allow rules only
 - **Pod Security Standards**: `restricted` profile enforced on all namespaces
-- **Secrets**: SOPS + age encrypted; never plaintext in git
+- **Secrets**: Sealed Secrets for K8s (committed as encrypted CRDs); SOPS + age for Ansible
 - **Containers**: non-root, all capabilities dropped, seccomp RuntimeDefault
 
 ## Argo CD (Internal-Only)
 
-Argo CD runs in the `argocd` namespace and is deployed from `k8s/argocd/kustomization.yaml`.
+Argo CD runs in the `argocd` namespace and manages all workloads via **manual sync** (no auto-sync). All Application manifests live in `k8s/argocd/apps/`.
 
 - **No public route**: Argo CD is not exposed through Cloudflare Tunnel.
 - **Access path**: use `kubectl port-forward` from your trusted management VLAN machine.
 - **Network isolation**: `argocd` namespace has default-deny ingress plus explicit in-namespace allow rules for component-to-component traffic.
-
-Deploy Argo CD:
-
-```bash
-make deploy-argocd
-```
 
 Access Argo CD UI/API locally:
 
@@ -128,16 +151,6 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 
 After first login, rotate the admin password and disable/delete the initial secret when no longer needed.
 
-### Secrets with Argo-managed apps
-
-Keep SOPS secrets on the existing manual path for now:
-
-```bash
-sops -d k8s/blog/mail-secret.sops.yml | kubectl apply -f -
-```
-
-Argo should manage non-secret manifests from `k8s/blog` (Deployment, Service, PVC).
-
 ## Backups
 
 Create a local Ghost backup tarball (content files + sqlite db):
@@ -147,16 +160,6 @@ make backup-blog
 ```
 
 By default backups are written to `./backups/blog-backup-<timestamp>.tgz`.
-
-Verification checks:
-
-```bash
-kubectl get ns argocd
-kubectl -n argocd get pods
-kubectl -n argocd get svc argocd-server
-kubectl -n cloudflare get deploy cloudflared
-kubectl -n blog get pods
-```
 
 ## Teardown
 
