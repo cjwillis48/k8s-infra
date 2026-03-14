@@ -6,8 +6,12 @@ resources:
   # Pinned Argo CD install manifest.
   - https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.3/manifests/install.yaml
   - network-policies.yml
+  - projects/platform.yml
+  - projects/blog.yml
+  - projects/ragr.yml
   - apps/argocd.yml
   - apps/blog.yml
   - apps/cloudflared.yml
   - apps/logging.yml
+  - apps/ragr.yml
   - apps/sealed-secrets.yml

@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: blog
+  namespace: argocd
+spec:
+  description: My personal ghost blog
+  sourceRepos:
+    - git@github.com:cjwillis48/k8s-infra.git
+  destinations:
+    - name: in-cluster
+      server: https://kubernetes.default.svc
+      namespace: blog

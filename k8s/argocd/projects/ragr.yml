@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ragr
+  namespace: argocd
+spec:
+  description: RAGr web app and related infra
+  sourceRepos:
+    - git@github.com:cjwillis48/ragr.git
+  destinations:
+    - name: in-cluster
+      server: https://kubernetes.default.svc
+      namespace: ragr
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

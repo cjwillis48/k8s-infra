@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ragr
+  namespace: argocd
+spec:
+  project: ragr
+  source:
+    repoURL: git@github.com:cjwillis48/ragr.git
+    targetRevision: prod-release-for-publicizing
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ragr
+  syncPolicy:
+    automated:
+      selfHeal: true

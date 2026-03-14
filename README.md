@@ -19,7 +19,7 @@ Internet → Cloudflare CDN → Cloudflare Tunnel → cloudflared pod → Ghost 
 |-------|-----------|
 | OS | Ubuntu 24.04 LTS (ARM64) |
 | K8s | K3s v1.31.4 |
-| GitOps | Argo CD (manual sync, internal-only access) |
+| GitOps | Argo CD (app-of-apps auto-sync, internal-only access) |
 | Blog | Ghost 5.x (SQLite) |
 | Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) |
 | K8s Secrets | Bitnami Sealed Secrets (SealedSecret CRD, synced by ArgoCD) |
@@ -89,7 +89,7 @@ make seal-secret IN=k8s/logging/axiom-credentials.secret.yml OUT=k8s/logging/axi
 # 7. Bootstrap cluster (namespaces + sealed-secrets controller + ArgoCD)
 make deploy
 
-# 8. Manually sync apps in ArgoCD UI or CLI
+# 8. Open ArgoCD UI (child apps can remain manual or be app-specific)
 kubectl -n argocd port-forward svc/argocd-server 8080:443
 # Open https://localhost:8080, sync each app
 
@@ -138,7 +138,7 @@ make encrypt-secrets   # Re-encrypt after editing
 
 ## Argo CD (Internal-Only)
 
-Argo CD runs in the `argocd` namespace and manages all workloads via **manual sync** (no auto-sync). All Application manifests live in `k8s/argocd/apps/`.
+Argo CD runs in the `argocd` namespace and manages all workloads via the app-of-apps pattern. The parent `argocd` Application auto-syncs from git, while child Applications can be configured per app (manual or automated). All Application manifests live in `k8s/argocd/apps/`.
 
 - **No public route**: Argo CD is not exposed through Cloudflare Tunnel.
 - **Access path**: use `kubectl port-forward` from your trusted management VLAN machine.
@@ -160,6 +160,27 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 ```
 
 After first login, rotate the admin password and disable/delete the initial secret when no longer needed.
+
+### New App Onboarding Flow
+
+Use this split for clean ownership:
+
+- `k8s-infra` owns Argo policy and registration (`AppProject` + `Application`)
+- app repo owns workload manifests (`Namespace`, secrets, services, deployments/statefulsets, policies)
+
+Checklist for adding a new app:
+
+1. In `k8s-infra`, add `k8s/argocd/projects/<app>.yml`:
+   - `sourceRepos` restricted to the app git repo
+   - `destinations` restricted to the target namespace
+   - add `clusterResourceWhitelist` for `Namespace` if app repo creates its own namespace
+2. In `k8s-infra`, add `k8s/argocd/apps/<app>.yml`:
+   - `repoURL`, `targetRevision`, `path`, destination namespace
+   - set app-specific sync mode (manual vs automated)
+3. Include both files in `k8s/argocd/kustomization.yaml`.
+4. Push `k8s-infra` changes; parent app-of-apps auto-sync applies project/app registration.
+5. In app repo, maintain all Kubernetes manifests under its own `k8s/` path.
+6. Sync/verify in Argo CD and confirm health before enabling any auto-prune behavior.
 
 ## Backups
 
