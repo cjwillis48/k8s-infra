@@ -5,6 +5,9 @@ metadata:
   namespace: argocd
 spec:
   project: platform
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
   source:
     repoURL: git@github.com:cjwillis48/k8s-infra.git
     targetRevision: main
