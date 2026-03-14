@@ -24,6 +24,7 @@ Internet → Cloudflare CDN → Cloudflare Tunnel → cloudflared pod → Ghost 
 | Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) |
 | K8s Secrets | Bitnami Sealed Secrets (SealedSecret CRD, synced by ArgoCD) |
 | Ansible Secrets | SOPS + age encryption (provisioning only) |
+| Log Shipping | Vector DaemonSet → Axiom dataset |
 | Provisioning | Ansible |
 
 ## Repo Structure
@@ -40,9 +41,10 @@ k8s-infra/
 ├── k8s/
 │   ├── namespaces/         # blog, cloudflare, argocd (restricted Pod Security Standards)
 │   ├── argocd/             # Argo CD install + Application manifests
-│   │   └── apps/           # ArgoCD Application CRDs (blog, cloudflared, network-policies, sealed-secrets)
+│   │   └── apps/           # ArgoCD Application CRDs (blog, cloudflared, logging, network-policies, sealed-secrets)
 │   ├── blog/               # Ghost deployment, service, PVC, sealed mail secret
 │   ├── cloudflared/        # Deployment + sealed tunnel token secret
+│   ├── logging/            # Vector DaemonSet config and Axiom sink
 │   ├── sealed-secrets/     # Sealed Secrets controller (kustomize remote base)
 │   └── network-policies/   # Default-deny + explicit allow rules
 ├── scripts/
@@ -80,16 +82,21 @@ export KUBECONFIG=$(pwd)/kubeconfig
 # 5. Create Cloudflare Tunnel and encrypt token
 make tunnel
 
-# 6. Bootstrap cluster (namespaces + sealed-secrets controller + ArgoCD)
+# 6. Set Axiom token + dataset in k8s/logging/axiom-credentials.secret.yml
+# Optional hardening: seal this secret and switch k8s/logging/kustomization.yaml to the sealed file
+make seal-secret IN=k8s/logging/axiom-credentials.secret.yml OUT=k8s/logging/axiom-credentials.sealed.yml
+
+# 7. Bootstrap cluster (namespaces + sealed-secrets controller + ArgoCD)
 make deploy
 
-# 7. Manually sync apps in ArgoCD UI or CLI
+# 8. Manually sync apps in ArgoCD UI or CLI
 kubectl -n argocd port-forward svc/argocd-server 8080:443
 # Open https://localhost:8080, sync each app
 
 # Verify
 make status
 make status-argocd
+make status-logging
 ```
 
 ## Secrets
@@ -106,6 +113,9 @@ make seal-secret IN=path/to/secret.yml OUT=path/to/sealed.yml
 ```
 
 The controller's public cert is stored at `k8s/sealed-secrets/sealed-secrets-pub.pem` for offline sealing.
+
+For Axiom log shipping, the bootstrap manifest is `k8s/logging/axiom-credentials.secret.yml`.
+Replace placeholder values locally, seal it with `make seal-secret`, and commit only the sealed output.
 
 ### Ansible Secrets — SOPS + age
 

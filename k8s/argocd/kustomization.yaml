@@ -9,4 +9,5 @@ resources:
   - apps/argocd.yml
   - apps/blog.yml
   - apps/cloudflared.yml
+  - apps/logging.yml
   - apps/sealed-secrets.yml

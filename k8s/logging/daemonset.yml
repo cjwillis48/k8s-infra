@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vector-agent
+  namespace: logging
+  labels:
+    app: vector-agent
+spec:
+  selector:
+    matchLabels:
+      app: vector-agent
+  template:
+    metadata:
+      labels:
+        app: vector-agent
+    spec:
+      serviceAccountName: vector-agent
+      tolerations:
+        - operator: Exists
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vector
+          image: timberio/vector:0.40.1-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config
+            - /etc/vector/vector.yaml
+          env:
+            - name: VECTOR_SELF_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: AXIOM_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: axiom-credentials
+                  key: AXIOM_TOKEN
+            - name: AXIOM_DATASET
+              valueFrom:
+                secretKeyRef:
+                  name: axiom-credentials
+                  key: AXIOM_DATASET
+          resources:
+            requests:
+              cpu: 25m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: vector-config
+              mountPath: /etc/vector
+              readOnly: true
+            - name: var-log
+              mountPath: /var/log
+              readOnly: true
+            - name: var-lib-vector
+              mountPath: /var/lib/vector
+      volumes:
+        - name: vector-config
+          configMap:
+            name: vector-config
+        - name: var-log
+          hostPath:
+            path: /var/log
+            type: Directory
+        - name: var-lib-vector
+          emptyDir: {}

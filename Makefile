@@ -1,4 +1,4 @@
-.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig tunnel status status-argocd seal-secret
+.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig tunnel status status-argocd status-logging seal-secret
 
 ANSIBLE_DIR := ansible
 PLAYBOOK_DIR := $(ANSIBLE_DIR)/playbooks
@@ -74,3 +74,9 @@ status-argocd:
 	kubectl -n argocd get pods
 	kubectl -n argocd get svc argocd-server
 	kubectl -n argocd get applications
+
+# Check logging pipeline health
+status-logging:
+	kubectl get ns logging
+	kubectl -n logging get daemonset vector-agent
+	kubectl -n logging get pods -l app=vector-agent
