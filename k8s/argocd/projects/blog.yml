@@ -28,3 +28,7 @@ spec:
       kind: NetworkPolicy
     - group: bitnami.com
       kind: SealedSecret
+    - group: batch
+      kind: CronJob
+    - group: batch
+      kind: Job

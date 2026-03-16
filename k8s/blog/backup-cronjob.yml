@@ -1,0 +1,97 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ghost-backup
+  namespace: blog
+  labels:
+    app: ghost-backup
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels:
+            app: ghost-backup
+        spec:
+          automountServiceAccountToken: false
+          nodeSelector:
+            storage-tier: large
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: amazon/aws-cli:2.22.35
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -e
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  BACKUP_FILE="/tmp/ghost-backup-${TIMESTAMP}.tgz"
+
+                  # Tar ghost content (SQLite DB + images/themes)
+                  tar czf "${BACKUP_FILE}" -C /var/lib/ghost/content .
+
+                  # Upload to Cloudflare R2
+                  aws s3 cp "${BACKUP_FILE}" \
+                    "s3://ghost-backups/ghost-backup-${TIMESTAMP}.tgz" \
+                    --endpoint-url "${R2_ENDPOINT}"
+
+                  # Prune old backups beyond 30
+                  aws s3 ls "s3://ghost-backups/" --endpoint-url "${R2_ENDPOINT}" \
+                    | sort \
+                    | head -n -30 \
+                    | awk '{print $4}' \
+                    | xargs -I {} aws s3 rm "s3://ghost-backups/{}" \
+                      --endpoint-url "${R2_ENDPOINT}"
+
+                  echo "Backup complete: ghost-backup-${TIMESTAMP}.tgz"
+              env:
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: ghost-backup-r2
+                      key: access-key-id
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: ghost-backup-r2
+                      key: secret-access-key
+                - name: R2_ENDPOINT
+                  valueFrom:
+                    secretKeyRef:
+                      name: ghost-backup-r2
+                      key: endpoint-url
+                - name: AWS_DEFAULT_REGION
+                  value: auto
+              volumeMounts:
+                - name: ghost-data
+                  mountPath: /var/lib/ghost/content
+                  readOnly: true
+              resources:
+                requests:
+                  memory: 128Mi
+                  cpu: 50m
+                limits:
+                  memory: 256Mi
+                  cpu: 500m
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities:
+                  drop:
+                    - ALL
+          volumes:
+            - name: ghost-data
+              persistentVolumeClaim:
+                claimName: ghost-data
+          restartPolicy: OnFailure

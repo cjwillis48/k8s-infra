@@ -51,7 +51,6 @@ k8s-infra/
 ├── scripts/
 │   ├── bootstrap.sh        # Install Mac deps (incl. kubeseal), generate age key
 │   ├── fetch-kubeconfig.sh # SCP kubeconfig from node-1
-│   ├── setup-cf-tunnel.sh  # Create Cloudflare Tunnel interactively
 │   └── backup-blog.sh      # Backup blog content + sqlite db to local tarball
 ├── .sops.yaml              # SOPS age encryption config (Ansible secrets only)
 ├── Makefile                # Convenience targets
@@ -80,8 +79,9 @@ make provision
 make kubeconfig
 export KUBECONFIG=$(pwd)/kubeconfig
 
-# 5. Create Cloudflare Tunnel and encrypt token
-make tunnel
+# 5. Create Cloudflare Tunnel token (see Secrets section below)
+#    Create tunnel in Cloudflare Zero Trust dashboard, then seal the token:
+make seal-secret IN=/tmp/cf-token.yml OUT=k8s/cloudflared/tunnel-token.sealed.yml
 
 # 6. Create a local (untracked) Axiom secret, then seal it — only the sealed output is committed
 cat > /tmp/axiom-credentials.secret.yml <<EOF
@@ -117,16 +117,29 @@ make status-logging
 
 K8s secrets are managed via [Bitnami Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets). SealedSecret resources are safe to commit to git — they can only be decrypted by the controller running in the cluster.
 
-To seal a new secret:
+To create or rotate any sealed secret:
 
 ```bash
-# Create a regular K8s Secret YAML, then seal it
-make seal-secret IN=path/to/secret.yml OUT=path/to/sealed.yml
+# 1. Write a temporary plaintext secret (never commit this)
+cat > /tmp/my-secret.yml <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-secret
+  namespace: my-namespace
+type: Opaque
+stringData:
+  KEY: "value"
+EOF
+
+# 2. Seal it
+make seal-secret IN=/tmp/my-secret.yml OUT=k8s/<app>/my-secret.sealed.yml
+
+# 3. Clean up plaintext
+rm /tmp/my-secret.yml
 ```
 
-The controller's public cert is stored at `k8s/sealed-secrets/sealed-secrets-pub.pem` for offline sealing.
-
-For Axiom log shipping, create a temporary plaintext secret locally (do not commit it), seal it with `make seal-secret`, and commit only the sealed output (`k8s/logging/axiom-credentials.sealed.yml`).
+The controller's public cert is stored at `k8s/sealed-secrets/sealed-secrets-pub.pem` for offline sealing. Only commit the sealed output — ArgoCD syncs it to the cluster.
 
 ### Ansible Secrets — SOPS + age
 

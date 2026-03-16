@@ -1,4 +1,4 @@
-.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig tunnel status status-argocd status-logging seal-secret
+.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret
 
 ANSIBLE_DIR := ansible
 PLAYBOOK_DIR := $(ANSIBLE_DIR)/playbooks
@@ -43,9 +43,6 @@ site:
 kubeconfig:
 	./scripts/fetch-kubeconfig.sh
 
-# Create Cloudflare tunnel interactively
-tunnel:
-	./scripts/setup-cf-tunnel.sh
 
 # Tear down K3s from all nodes
 reset:

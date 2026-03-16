@@ -8,3 +8,5 @@ resources:
   - pvc.yml
   - mail-secret.sealed.yml
   - network-policies.yml
+  - backup-cronjob.yml
+  - backup-r2-secret.sealed.yml
