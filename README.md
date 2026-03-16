@@ -21,7 +21,7 @@ Internet → Cloudflare CDN → Cloudflare Tunnel → cloudflared pod → Ghost 
 | K8s | K3s v1.31.4 |
 | GitOps | Argo CD (app-of-apps auto-sync, internal-only access) |
 | Blog | Ghost 5.x (SQLite) |
-| LAN Ingress | Traefik + MetalLB → `*.homie` (internal services) |
+| LAN Ingress | Traefik + MetalLB → `*.k8s.homie.lab` (internal services) |
 | External Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) |
 | K8s Secrets | Bitnami Sealed Secrets (SealedSecret CRD, synced by ArgoCD) |
 | Ansible Secrets | SOPS + age encryption (provisioning only) |
@@ -171,7 +171,7 @@ After first login, rotate the admin password and disable/delete the initial secr
 3. Add the target namespace to the platform project `destinations`
 4. Add a namespace definition in `k8s/namespaces/` if needed
 5. Add the app reference to `k8s/argocd/kustomization.yaml`
-6. If it needs a `*.homie` route, add an Ingress in `k8s/ingresses/`
+6. If it needs a `*.k8s.homie.lab` route, add an Ingress in `k8s/ingresses/`
 
 #### Custom app in its own repo (e.g. a Flask API)
 
@@ -180,7 +180,7 @@ In **k8s-infra** (this repo):
 1. Add `k8s/argocd/projects/<app>.yml` — AppProject scoped to the app's git repo and namespace
 2. Add `k8s/argocd/apps/<app>.yml` — Application CRD pointing to the app repo's `k8s/` path
 3. Add both to `k8s/argocd/kustomization.yaml`
-4. Add `k8s/ingresses/<app>.yml` with the Ingress for `<app>.homie`
+4. Add `k8s/ingresses/<app>.yml` with the Ingress for `<app>.k8s.homie.lab`
 5. Add the ingress to `k8s/ingresses/kustomization.yaml`
 
 In **the app repo**:
