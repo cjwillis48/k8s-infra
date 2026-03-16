@@ -19,7 +19,7 @@ resources:
   - apps/metallb-config.yml
   - apps/traefik.yml
   - apps/traefik-config.yml
-  - ingress.yml
+  - apps/ingresses.yml
 
 patches:
   - target:
