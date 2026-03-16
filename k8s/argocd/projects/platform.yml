@@ -42,6 +42,10 @@ spec:
     - group: networking.k8s.io
       kind: IngressClass
   namespaceResourceWhitelist:
+    - group: argoproj.io
+      kind: Application
+    - group: argoproj.io
+      kind: AppProject
     - group: ""
       kind: ConfigMap
     - group: ""
