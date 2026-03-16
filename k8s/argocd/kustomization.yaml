@@ -9,6 +9,7 @@ resources:
   - projects/platform.yml
   - projects/blog.yml
   - projects/ragr.yml
+  - projects/ingresses.yml
   - apps/argocd.yml
   - apps/blog.yml
   - apps/cloudflared.yml
