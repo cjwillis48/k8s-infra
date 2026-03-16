@@ -39,6 +39,8 @@ spec:
       kind: Namespace
     - group: admissionregistration.k8s.io
       kind: ValidatingWebhookConfiguration
+    - group: networking.k8s.io
+      kind: IngressClass
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"
