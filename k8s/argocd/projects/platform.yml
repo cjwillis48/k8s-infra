@@ -37,6 +37,8 @@ spec:
       kind: ClusterRoleBinding
     - group: ""
       kind: Namespace
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
   namespaceResourceWhitelist:
     - group: "*"
       kind: "*"
