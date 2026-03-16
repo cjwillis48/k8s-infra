@@ -15,3 +15,17 @@ resources:
   - apps/logging.yml
   - apps/ragr.yml
   - apps/sealed-secrets.yml
+  - apps/metallb.yml
+  - apps/metallb-config.yml
+  - apps/traefik.yml
+  - apps/traefik-config.yml
+  - ingress.yml
+
+patches:
+  - target:
+      kind: Deployment
+      name: argocd-server
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/args/-
+        value: --insecure
