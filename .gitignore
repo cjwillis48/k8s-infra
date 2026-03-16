@@ -33,3 +33,7 @@ kubeconfig
 # Environment files
 .env
 .env.*
+
+# Local plaintext bootstrap secrets (never commit)
+k8s/logging/axiom-credentials.secret.yml
+k8s/cloudflared/secret.sops.yml

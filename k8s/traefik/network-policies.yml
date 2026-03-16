@@ -24,6 +24,7 @@ spec:
   ingress:
     - ports:
         - protocol: TCP
-          port: 8080
+          # Traefik "web" entrypoint backing Service port 80.
+          port: 8000
         - protocol: TCP
           port: 8443
