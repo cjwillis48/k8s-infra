@@ -11,3 +11,20 @@ spec:
     - name: in-cluster
       server: https://kubernetes.default.svc
       namespace: blog
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Secret
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: apps
+      kind: Deployment
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: bitnami.com
+      kind: SealedSecret

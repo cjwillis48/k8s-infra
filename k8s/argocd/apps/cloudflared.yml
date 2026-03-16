@@ -9,6 +9,7 @@ spec:
     repoURL: git@github.com:cjwillis48/k8s-infra.git
     targetRevision: main
     path: k8s/cloudflared
+  syncPolicy: {}
   destination:
     server: https://kubernetes.default.svc
     namespace: cloudflare

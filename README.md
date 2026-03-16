@@ -83,9 +83,20 @@ export KUBECONFIG=$(pwd)/kubeconfig
 # 5. Create Cloudflare Tunnel and encrypt token
 make tunnel
 
-# 6. Set Axiom token + dataset in k8s/logging/axiom-credentials.secret.yml
-# Optional hardening: seal this secret and switch k8s/logging/kustomization.yaml to the sealed file
-make seal-secret IN=k8s/logging/axiom-credentials.secret.yml OUT=k8s/logging/axiom-credentials.sealed.yml
+# 6. Create a local (untracked) Axiom secret, then seal it — only the sealed output is committed
+cat > /tmp/axiom-credentials.secret.yml <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: axiom-credentials
+  namespace: logging
+type: Opaque
+stringData:
+  AXIOM_TOKEN: "your-token-here"
+  AXIOM_DATASET: "your-dataset-here"
+EOF
+make seal-secret IN=/tmp/axiom-credentials.secret.yml OUT=k8s/logging/axiom-credentials.sealed.yml
+rm /tmp/axiom-credentials.secret.yml
 
 # 7. Bootstrap cluster (namespaces + sealed-secrets controller + ArgoCD)
 make deploy
@@ -115,8 +126,7 @@ make seal-secret IN=path/to/secret.yml OUT=path/to/sealed.yml
 
 The controller's public cert is stored at `k8s/sealed-secrets/sealed-secrets-pub.pem` for offline sealing.
 
-For Axiom log shipping, the bootstrap manifest is `k8s/logging/axiom-credentials.secret.yml`.
-Replace placeholder values locally, seal it with `make seal-secret`, and commit only the sealed output.
+For Axiom log shipping, create a temporary plaintext secret locally (do not commit it), seal it with `make seal-secret`, and commit only the sealed output (`k8s/logging/axiom-credentials.sealed.yml`).
 
 ### Ansible Secrets — SOPS + age
 

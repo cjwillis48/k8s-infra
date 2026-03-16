@@ -8,6 +8,7 @@ spec:
   syncPolicy:
     automated:
       selfHeal: true
+      prune: true
   source:
     repoURL: git@github.com:cjwillis48/k8s-infra.git
     targetRevision: main

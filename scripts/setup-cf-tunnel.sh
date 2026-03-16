@@ -4,7 +4,9 @@ set -euo pipefail
 TUNNEL_NAME="k8s-ghost-blog"
 HOSTNAME="blog.charliewillis.com"
 SERVICE_URL="http://ghost.blog.svc.cluster.local:2368"
-SECRET_FILE="$(cd "$(dirname "$0")/.." && pwd)/k8s/cloudflared/secret.sops.yml"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SEALED_FILE="${REPO_ROOT}/k8s/cloudflared/tunnel-token.sealed.yml"
+SEAL_CERT="${REPO_ROOT}/k8s/sealed-secrets/sealed-secrets-pub.pem"
 
 echo "==> Cloudflare Tunnel Setup"
 echo ""
@@ -38,9 +40,12 @@ if [[ -z "${TUNNEL_TOKEN}" ]]; then
     exit 1
 fi
 
+TEMP_SECRET=$(mktemp)
+trap 'rm -f "${TEMP_SECRET}"' EXIT
+
 echo ""
-echo "==> Updating K8s secret file with tunnel token..."
-cat > "${SECRET_FILE}" <<EOF
+echo "==> Creating temporary secret and sealing with kubeseal..."
+cat > "${TEMP_SECRET}" <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
@@ -51,15 +56,11 @@ stringData:
   token: "${TUNNEL_TOKEN}"
 EOF
 
-echo "==> Encrypting secret with SOPS..."
-sops -e -i "${SECRET_FILE}"
+kubeseal --format yaml \
+    --cert "${SEAL_CERT}" \
+    < "${TEMP_SECRET}" > "${SEALED_FILE}"
 
-echo ""
-echo "==> Also updating Ansible secrets..."
-echo ""
-echo "Run the following to add the token to Ansible vars:"
-echo "  sops ansible/group_vars/all.sops.yml"
-echo "  # Set cloudflare_tunnel_token to: ${TUNNEL_TOKEN}"
+echo "==> Sealed secret written to ${SEALED_FILE}"
 echo ""
 echo "==> Tunnel setup complete!"
-echo "Deploy with: make deploy"
+echo "Commit the sealed secret and push — ArgoCD will deploy it."
