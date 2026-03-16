@@ -21,7 +21,8 @@ Internet → Cloudflare CDN → Cloudflare Tunnel → cloudflared pod → Ghost 
 | K8s | K3s v1.31.4 |
 | GitOps | Argo CD (app-of-apps auto-sync, internal-only access) |
 | Blog | Ghost 5.x (SQLite) |
-| Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) |
+| LAN Ingress | Traefik + MetalLB → `*.homie` (internal services) |
+| External Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) |
 | K8s Secrets | Bitnami Sealed Secrets (SealedSecret CRD, synced by ArgoCD) |
 | Ansible Secrets | SOPS + age encryption (provisioning only) |
 | Log Shipping | Vector DaemonSet → Axiom dataset |
@@ -161,26 +162,33 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 
 After first login, rotate the admin password and disable/delete the initial secret when no longer needed.
 
-### New App Onboarding Flow
+### Onboarding a New Application
 
-Use this split for clean ownership:
+#### Infra-only component (e.g. a new Helm chart like cert-manager)
 
-- `k8s-infra` owns Argo policy and registration (`AppProject` + `Application`)
-- app repo owns workload manifests (`Namespace`, secrets, services, deployments/statefulsets, policies)
+1. Add `k8s/argocd/apps/<component>.yml` — Application CRD pointing to the Helm repo
+2. Add the Helm repo URL to `k8s/argocd/projects/platform.yml` `sourceRepos`
+3. Add the target namespace to the platform project `destinations`
+4. Add a namespace definition in `k8s/namespaces/` if needed
+5. Add the app reference to `k8s/argocd/kustomization.yaml`
+6. If it needs a `*.homie` route, add an Ingress in `k8s/ingresses/`
 
-Checklist for adding a new app:
+#### Custom app in its own repo (e.g. a Flask API)
 
-1. In `k8s-infra`, add `k8s/argocd/projects/<app>.yml`:
-   - `sourceRepos` restricted to the app git repo
-   - `destinations` restricted to the target namespace
-   - add `clusterResourceWhitelist` for `Namespace` if app repo creates its own namespace
-2. In `k8s-infra`, add `k8s/argocd/apps/<app>.yml`:
-   - `repoURL`, `targetRevision`, `path`, destination namespace
-   - set app-specific sync mode (manual vs automated)
-3. Include both files in `k8s/argocd/kustomization.yaml`.
-4. Push `k8s-infra` changes; parent app-of-apps auto-sync applies project/app registration.
-5. In app repo, maintain all Kubernetes manifests under its own `k8s/` path.
-6. Sync/verify in Argo CD and confirm health before enabling any auto-prune behavior.
+In **k8s-infra** (this repo):
+
+1. Add `k8s/argocd/projects/<app>.yml` — AppProject scoped to the app's git repo and namespace
+2. Add `k8s/argocd/apps/<app>.yml` — Application CRD pointing to the app repo's `k8s/` path
+3. Add both to `k8s/argocd/kustomization.yaml`
+4. Add `k8s/ingresses/<app>.yml` with the Ingress for `<app>.homie`
+5. Add the ingress to `k8s/ingresses/kustomization.yaml`
+
+In **the app repo**:
+
+6. Maintain all workload manifests (Namespace, Deployment, Service, Sealed Secrets, NetworkPolicies) under a `k8s/` directory
+7. Push — ArgoCD auto-syncs from the app repo
+
+The app repo owns its workload; k8s-infra owns ArgoCD registration and ingress routing.
 
 ## Backups
 

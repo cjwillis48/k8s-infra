@@ -12,9 +12,9 @@ bootstrap:
 provision:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbooks/provision.yml
 
-# Bootstrap cluster: namespaces, sealed-secrets controller, and ArgoCD (which manages everything else)
+# Bootstrap cluster: ArgoCD + sealed-secrets (all other namespaces managed by ArgoCD)
 deploy: kubeconfig
-	kubectl apply -f k8s/namespaces/
+	kubectl apply -f k8s/namespaces/argocd.yml
 	kubectl apply -k k8s/sealed-secrets/
 	$(MAKE) deploy-argocd
 
