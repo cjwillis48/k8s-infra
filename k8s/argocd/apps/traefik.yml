@@ -24,7 +24,10 @@ spec:
           kubernetesIngress:
             publishedService:
               enabled: true
-        ports: {}
+        ports:
+          web:
+            redirectTo:
+              port: websecure
   destination:
     server: https://kubernetes.default.svc
     namespace: traefik
