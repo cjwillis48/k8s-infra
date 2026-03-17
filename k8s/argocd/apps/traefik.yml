@@ -26,8 +26,12 @@ spec:
               enabled: true
         ports:
           web:
-            redirectTo:
-              port: websecure
+            http:
+              redirections:
+                entryPoint:
+                  to: websecure
+                  scheme: https
+                  permanent: true
   destination:
     server: https://kubernetes.default.svc
     namespace: traefik
