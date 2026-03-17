@@ -30,11 +30,13 @@ spec:
               type: RuntimeDefault
           containers:
             - name: backup
-              image: amazon/aws-cli:2.22.35
+              image: alpine:3.21
               command: ["/bin/sh", "-c"]
               args:
                 - |
                   set -e
+                  apk add --no-cache aws-cli > /dev/null
+
                   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
                   BACKUP_FILE="/tmp/ghost-backup-${TIMESTAMP}.tgz"
 
