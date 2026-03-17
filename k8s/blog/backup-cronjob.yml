@@ -30,33 +30,33 @@ spec:
               type: RuntimeDefault
           containers:
             - name: backup
-              image: alpine:3.21
-              command: ["/bin/sh", "-c"]
+              image: amazon/aws-cli:2.22.35
+              command: ["/bin/bash", "-c"]
               args:
                 - |
                   set -e
-                  apk add --no-cache aws-cli > /dev/null
-
                   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-                  BACKUP_FILE="/tmp/ghost-backup-${TIMESTAMP}.tgz"
+                  ENDPOINT="--endpoint-url ${R2_ENDPOINT}"
 
-                  # Tar ghost content (SQLite DB + images/themes)
-                  tar czf "${BACKUP_FILE}" -C /var/lib/ghost/content .
+                  # Sync ghost content to a timestamped prefix in R2
+                  aws s3 sync /var/lib/ghost/content \
+                    "s3://ghost-backups/${TIMESTAMP}/" \
+                    ${ENDPOINT}
 
-                  # Upload to Cloudflare R2
-                  aws s3 cp "${BACKUP_FILE}" \
-                    "s3://ghost-backups/ghost-backup-${TIMESTAMP}.tgz" \
-                    --endpoint-url "${R2_ENDPOINT}"
+                  echo "Backup complete: s3://ghost-backups/${TIMESTAMP}/"
 
                   # Prune old backups beyond 30
-                  aws s3 ls "s3://ghost-backups/" --endpoint-url "${R2_ENDPOINT}" \
-                    | sort \
-                    | head -n -30 \
-                    | awk '{print $4}' \
-                    | xargs -I {} aws s3 rm "s3://ghost-backups/{}" \
-                      --endpoint-url "${R2_ENDPOINT}"
-
-                  echo "Backup complete: ghost-backup-${TIMESTAMP}.tgz"
+                  BACKUPS=$(aws s3 ls "s3://ghost-backups/" ${ENDPOINT} \
+                    | awk '{print $2}' \
+                    | sort)
+                  COUNT=$(echo "${BACKUPS}" | wc -l)
+                  if [ "${COUNT}" -gt 30 ]; then
+                    DELETE_COUNT=$((COUNT - 30))
+                    echo "${BACKUPS}" | head -n "${DELETE_COUNT}" | while read -r prefix; do
+                      echo "Pruning s3://ghost-backups/${prefix}"
+                      aws s3 rm "s3://ghost-backups/${prefix}" --recursive ${ENDPOINT}
+                    done
+                  fi
               env:
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
