@@ -18,11 +18,8 @@ resources:
   - apps/ragr.yml
   - apps/sealed-secrets.yml
   - apps/metallb.yml
-  - apps/metallb-config.yml
   - apps/traefik.yml
-  - apps/traefik-config.yml
   - apps/cert-manager.yml
-  - apps/cert-manager-config.yml
 
 patches:
   - target:

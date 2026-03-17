@@ -3,22 +3,23 @@ kind: Application
 metadata:
   name: cert-manager
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
 spec:
   project: platform
-  source:
-    repoURL: https://charts.jetstack.io
-    chart: cert-manager
-    targetRevision: v1.17.2
-    helm:
-      releaseName: cert-manager
-      valuesObject:
-        crds:
-          enabled: true
-        global:
-          podSecurityPolicy:
-            enabled: false
+  sources:
+    - repoURL: https://charts.jetstack.io
+      chart: cert-manager
+      targetRevision: v1.17.2
+      helm:
+        releaseName: cert-manager
+        valuesObject:
+          crds:
+            enabled: true
+          global:
+            podSecurityPolicy:
+              enabled: false
+    - repoURL: git@github.com:cjwillis48/k8s-infra.git
+      targetRevision: main
+      path: k8s/cert-manager
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager
@@ -31,5 +32,13 @@ spec:
         pod-security.kubernetes.io/enforce: restricted
         pod-security.kubernetes.io/audit: restricted
         pod-security.kubernetes.io/warn: restricted
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

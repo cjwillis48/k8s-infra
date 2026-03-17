@@ -3,35 +3,36 @@ kind: Application
 metadata:
   name: traefik
   namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
 spec:
   project: platform
-  source:
-    repoURL: https://traefik.github.io/charts
-    chart: traefik
-    targetRevision: 39.0.5
-    helm:
-      releaseName: traefik
-      valuesObject:
-        service:
-          spec:
-            loadBalancerIP: "192.168.6.240"
-        ingressRoute:
-          dashboard:
-            enabled: false
-        providers:
-          kubernetesIngress:
-            publishedService:
-              enabled: true
-        ports:
-          web:
-            http:
-              redirections:
-                entryPoint:
-                  to: websecure
-                  scheme: https
-                  permanent: true
+  sources:
+    - repoURL: https://traefik.github.io/charts
+      chart: traefik
+      targetRevision: 39.0.5
+      helm:
+        releaseName: traefik
+        valuesObject:
+          service:
+            spec:
+              loadBalancerIP: "192.168.6.240"
+          ingressRoute:
+            dashboard:
+              enabled: false
+          providers:
+            kubernetesIngress:
+              publishedService:
+                enabled: true
+          ports:
+            web:
+              http:
+                redirections:
+                  entryPoint:
+                    to: websecure
+                    scheme: https
+                    permanent: true
+    - repoURL: git@github.com:cjwillis48/k8s-infra.git
+      targetRevision: main
+      path: k8s/traefik
   destination:
     server: https://kubernetes.default.svc
     namespace: traefik
@@ -44,5 +45,13 @@ spec:
         pod-security.kubernetes.io/enforce: restricted
         pod-security.kubernetes.io/audit: restricted
         pod-security.kubernetes.io/warn: restricted
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
