@@ -9,6 +9,7 @@ spec:
     - git@github.com:cjwillis48/k8s-infra.git
     - https://metallb.github.io/metallb
     - https://traefik.github.io/charts
+    - https://charts.jetstack.io
   destinations:
     - name: in-cluster
       server: https://kubernetes.default.svc
@@ -28,6 +29,9 @@ spec:
     - name: in-cluster
       server: https://kubernetes.default.svc
       namespace: traefik
+    - name: in-cluster
+      server: https://kubernetes.default.svc
+      namespace: cert-manager
   clusterResourceWhitelist:
     - group: apiextensions.k8s.io
       kind: CustomResourceDefinition
@@ -39,8 +43,12 @@ spec:
       kind: Namespace
     - group: admissionregistration.k8s.io
       kind: ValidatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
     - group: networking.k8s.io
       kind: IngressClass
+    - group: cert-manager.io
+      kind: ClusterIssuer
   namespaceResourceWhitelist:
     - group: argoproj.io
       kind: Application
@@ -78,3 +86,13 @@ spec:
       kind: Role
     - group: rbac.authorization.k8s.io
       kind: RoleBinding
+    - group: cert-manager.io
+      kind: Certificate
+    - group: traefik.io
+      kind: TLSStore
+    - group: ""
+      kind: Endpoints
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: coordination.k8s.io
+      kind: Lease

@@ -5,8 +5,11 @@ metadata:
   namespace: argocd
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - argocd.lan.charliewillis.com
   rules:
-    - host: argocd.k8s.homie.lab
+    - host: argocd.lan.charliewillis.com
       http:
         paths:
           - path: /

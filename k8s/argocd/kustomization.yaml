@@ -21,6 +21,8 @@ resources:
   - apps/metallb-config.yml
   - apps/traefik.yml
   - apps/traefik-config.yml
+  - apps/cert-manager.yml
+  - apps/cert-manager-config.yml
   - apps/ingresses.yml
 
 patches:

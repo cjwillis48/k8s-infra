@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - argocd.yml
   - blog.yml
+  - cert-manager.yml
   - cloudflare.yml
   - logging.yml
   - metallb-system.yml

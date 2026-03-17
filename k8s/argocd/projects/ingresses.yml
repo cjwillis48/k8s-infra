@@ -4,7 +4,7 @@ metadata:
   name: ingresses
   namespace: argocd
 spec:
-  description: LAN ingress definitions for *.homie services
+  description: LAN ingress definitions for *.lan.charliewillis.com
   sourceRepos:
     - git@github.com:cjwillis48/k8s-infra.git
   destinations:
