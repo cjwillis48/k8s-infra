@@ -11,6 +11,9 @@ spec:
     - name: in-cluster
       server: https://kubernetes.default.svc
       namespace: blog
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
   namespaceResourceWhitelist:
     - group: ""
       kind: ConfigMap

@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: cloudflare
 
 resources:
+  - namespace.yml
   - deployment.yml
   - tunnel-token.sealed.yml
   - network-policies.yml

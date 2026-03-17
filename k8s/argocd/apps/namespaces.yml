@@ -3,6 +3,7 @@ kind: Application
 metadata:
   name: namespaces
   namespace: argocd
+  finalizers: []
   annotations:
     argocd.argoproj.io/sync-wave: "-3"
 spec:
@@ -17,4 +18,4 @@ spec:
   syncPolicy:
     automated:
       selfHeal: true
-      prune: true
+      prune: false

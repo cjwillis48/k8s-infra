@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: logging
 
 resources:
+  - namespace.yml
   - rbac.yml
   - axiom-credentials.sealed.yml
   - configmap.yml

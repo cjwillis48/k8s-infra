@@ -5,11 +5,12 @@ namespace: argocd
 resources:
   # Pinned Argo CD install manifest.
   - https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.3/manifests/install.yaml
+  - namespace.yml
+  - ingress.yml
   - network-policies.yml
   - projects/platform.yml
   - projects/blog.yml
   - projects/ragr.yml
-  - projects/ingresses.yml
   - apps/argocd.yml
   - apps/blog.yml
   - apps/cloudflared.yml
@@ -23,7 +24,6 @@ resources:
   - apps/traefik-config.yml
   - apps/cert-manager.yml
   - apps/cert-manager-config.yml
-  - apps/ingresses.yml
 
 patches:
   - target:

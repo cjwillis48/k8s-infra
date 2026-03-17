@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: blog
 
 resources:
+  - namespace.yml
   - deployment.yml
   - service.yml
   - pvc.yml
