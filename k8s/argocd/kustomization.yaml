@@ -17,7 +17,6 @@ resources:
   - apps/logging.yml
   - apps/ragr.yml
   - apps/sealed-secrets.yml
-  - apps/namespaces.yml
   - apps/metallb.yml
   - apps/metallb-config.yml
   - apps/traefik.yml
