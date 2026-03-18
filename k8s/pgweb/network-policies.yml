@@ -1,0 +1,61 @@
+# Default deny all ingress in pgweb namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: pgweb
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow traefik to reach pgweb
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-to-pgweb
+  namespace: pgweb
+spec:
+  podSelector:
+    matchLabels:
+      app: pgweb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - protocol: TCP
+          port: 8081
+---
+# Allow pgweb to reach postgres in ragr namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-pgweb-to-ragr-egress
+  namespace: pgweb
+spec:
+  podSelector:
+    matchLabels:
+      app: pgweb
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ragr
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

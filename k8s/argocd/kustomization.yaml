@@ -20,6 +20,7 @@ resources:
   - apps/metallb.yml
   - apps/traefik.yml
   - apps/cert-manager.yml
+  - apps/pgweb.yml
 
 patches:
   - target:

@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pgweb
+  namespace: pgweb
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - pgweb.lan.charliewillis.com
+  rules:
+    - host: pgweb.lan.charliewillis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pgweb
+                port:
+                  number: 80
