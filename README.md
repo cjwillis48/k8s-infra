@@ -21,10 +21,12 @@ Internet → Cloudflare CDN → Cloudflare Tunnel → cloudflared pod → Ghost 
 | K8s | K3s v1.31.4 |
 | GitOps | Argo CD (app-of-apps auto-sync, internal-only access) |
 | Blog | Ghost 5.x (SQLite) |
-| LAN Ingress | Traefik + MetalLB → `*.k8s.homie.lab` (internal services) |
+| TLS | Let's Encrypt wildcard via cert-manager + Cloudflare DNS-01 |
+| LAN Ingress | Traefik + MetalLB → `*.lan.charliewillis.com` (internal services) |
 | External Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) |
 | K8s Secrets | Bitnami Sealed Secrets (SealedSecret CRD, synced by ArgoCD) |
 | Ansible Secrets | SOPS + age encryption (provisioning only) |
+| Backups | Daily Ghost backup to Cloudflare R2 (CronJob, 30-day retention) |
 | Log Shipping | Vector DaemonSet → Axiom dataset |
 | Provisioning | Ansible |
 
@@ -40,14 +42,15 @@ k8s-infra/
 │       ├── k3s_server/     # Control plane install + config
 │       └── k3s_agent/      # Worker node install + join
 ├── k8s/
-│   ├── namespaces/         # blog, cloudflare, argocd (restricted Pod Security Standards)
-│   ├── argocd/             # Argo CD install + Application manifests
-│   │   └── apps/           # ArgoCD Application CRDs (blog, cloudflared, logging, network-policies, sealed-secrets)
-│   ├── blog/               # Ghost deployment, service, PVC, sealed mail secret
-│   ├── cloudflared/        # Deployment + sealed tunnel token secret
-│   ├── logging/            # Vector DaemonSet config and Axiom sink
+│   ├── argocd/             # Argo CD install, Application CRDs, projects, ingress, namespace
+│   ├── blog/               # Ghost deployment, service, PVC, backup CronJob, namespace
+│   ├── cert-manager/       # ClusterIssuer + Cloudflare API token
+│   ├── cloudflared/        # Deployment + sealed tunnel token, namespace
+│   ├── logging/            # Vector DaemonSet + Axiom config, namespace
+│   ├── metallb/            # IP pool + L2 advertisement + network policies
+│   ├── pgweb/              # PGWeb deployment, ingress, network policies, namespace
 │   ├── sealed-secrets/     # Sealed Secrets controller (kustomize remote base)
-│   └── network-policies/   # Default-deny + explicit allow rules
+│   └── traefik/            # TLS certificate, TLSStore, network policies
 ├── scripts/
 │   ├── bootstrap.sh        # Install Mac deps (incl. kubeseal), generate age key
 │   ├── fetch-kubeconfig.sh # SCP kubeconfig from node-1
@@ -101,9 +104,8 @@ rm /tmp/axiom-credentials.secret.yml
 # 7. Bootstrap cluster (namespaces + sealed-secrets controller + ArgoCD)
 make deploy
 
-# 8. Open ArgoCD UI (child apps can remain manual or be app-specific)
-kubectl -n argocd port-forward svc/argocd-server 8080:443
-# Open https://localhost:8080, sync each app
+# 8. Open ArgoCD UI — all apps auto-sync from git
+# https://argocd.lan.charliewillis.com
 
 # Verify
 make status
@@ -160,21 +162,12 @@ make encrypt-secrets   # Re-encrypt after editing
 - **Secrets**: Sealed Secrets for K8s (committed as encrypted CRDs); SOPS + age for Ansible
 - **Containers**: non-root, all capabilities dropped, seccomp RuntimeDefault
 
-## Argo CD (Internal-Only)
+## Argo CD
 
-Argo CD runs in the `argocd` namespace and manages all workloads via the app-of-apps pattern. The parent `argocd` Application auto-syncs from git, while child Applications can be configured per app (manual or automated). All Application manifests live in `k8s/argocd/apps/`.
+Argo CD runs in the `argocd` namespace and manages all workloads via the app-of-apps pattern. The parent `argocd` Application auto-syncs from git. All child Applications also auto-sync with self-heal and prune. Application manifests live in `k8s/argocd/apps/`.
 
-- **No public route**: Argo CD is not exposed through Cloudflare Tunnel.
-- **Access path**: use `kubectl port-forward` from your trusted management VLAN machine.
-- **Network isolation**: `argocd` namespace has default-deny ingress plus explicit in-namespace allow rules for component-to-component traffic.
-
-Access Argo CD UI/API locally:
-
-```bash
-kubectl -n argocd port-forward svc/argocd-server 8080:443
-```
-
-Open `https://localhost:8080` in your browser.
+- **LAN access**: `https://argocd.lan.charliewillis.com` (TLS via wildcard cert)
+- **Network isolation**: `argocd` namespace has default-deny ingress plus explicit allow rules for Traefik and internal component traffic.
 
 Get the initial admin password:
 
@@ -183,45 +176,59 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 --decode && echo
 ```
 
-After first login, rotate the admin password and disable/delete the initial secret when no longer needed.
-
 ### Onboarding a New Application
 
-#### Infra-only component (e.g. a new Helm chart like cert-manager)
+#### Infrastructure component (Helm chart)
 
-1. Add `k8s/argocd/apps/<component>.yml` — Application CRD pointing to the Helm repo
+Use multi-source Applications to combine a Helm chart with git-based config in a single app.
+
+1. Add `k8s/argocd/apps/<component>.yml` — multi-source Application with Helm chart + git config
 2. Add the Helm repo URL to `k8s/argocd/projects/platform.yml` `sourceRepos`
 3. Add the target namespace to the platform project `destinations`
-4. Add a namespace definition in `k8s/namespaces/` if needed
+4. Add required resource types to the platform project whitelist
 5. Add the app reference to `k8s/argocd/kustomization.yaml`
-6. If it needs a `*.k8s.homie.lab` route, add an Ingress in `k8s/ingresses/`
+6. Use `managedNamespaceMetadata` + `CreateNamespace=true` for namespace creation with PSS labels
+7. Use `ServerSideApply=true` + `SkipDryRunOnMissingResource=true` for CRD-dependent resources
 
-#### Custom app in its own repo (e.g. a Flask API)
+#### Custom app in its own repo
 
 In **k8s-infra** (this repo):
 
 1. Add `k8s/argocd/projects/<app>.yml` — AppProject scoped to the app's git repo and namespace
-2. Add `k8s/argocd/apps/<app>.yml` — Application CRD pointing to the app repo's `k8s/` path
+2. Add `k8s/argocd/apps/<app>.yml` — Application CRD with `automated: {selfHeal: true, prune: true}`
 3. Add both to `k8s/argocd/kustomization.yaml`
-4. Add `k8s/ingresses/<app>.yml` with the Ingress for `<app>.k8s.homie.lab`
-5. Add the ingress to `k8s/ingresses/kustomization.yaml`
 
 In **the app repo**:
 
-6. Maintain all workload manifests (Namespace, Deployment, Service, Sealed Secrets, NetworkPolicies) under a `k8s/` directory
-7. Push — ArgoCD auto-syncs from the app repo
+4. Include a `Namespace` resource with Pod Security Standards labels (`restricted` unless you need `privileged`)
+5. Include a `NetworkPolicy` with default-deny ingress + explicit allow rules for expected traffic
+6. Include all workload manifests (Deployment, Service, Sealed Secrets, etc.) under a `k8s/` directory
+7. If the app needs LAN access, include an Ingress for `<app>.lan.charliewillis.com` — TLS is automatic via the wildcard cert and Traefik TLSStore
 
-The app repo owns its workload; k8s-infra owns ArgoCD registration and ingress routing.
+#### Platform-managed app in this repo (e.g. PGWeb)
+
+1. Create `k8s/<app>/` with namespace, deployment, service, ingress, network policies, and kustomization
+2. Add `k8s/argocd/apps/<app>.yml` — Application CRD
+3. Add the app's namespace to `k8s/argocd/projects/platform.yml` `destinations`
+4. Add the app reference to `k8s/argocd/kustomization.yaml`
 
 ## Backups
 
-Create a local Ghost backup tarball (content files + sqlite db):
+Ghost content (SQLite DB + images/themes) is backed up daily at 3am to Cloudflare R2 via a Kubernetes CronJob. Each backup is stored as a timestamped directory in the `ghost-backups` R2 bucket. Backups older than 30 days are automatically pruned.
+
+Manual backup to local machine (legacy):
 
 ```bash
 make backup-blog
 ```
 
-By default backups are written to `./backups/blog-backup-<timestamp>.tgz`.
+Trigger a one-off backup to R2:
+
+```bash
+kubectl create job --from=cronjob/ghost-backup ghost-backup-manual -n blog
+kubectl logs -f job/ghost-backup-manual -n blog
+kubectl delete job ghost-backup-manual -n blog
+```
 
 ## Teardown
 
