@@ -12,8 +12,10 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      backoffLimit: 2
-      activeDeadlineSeconds: 600
+      # Avoid multiple timestamped prefixes from retries; fail once and alert.
+      backoffLimit: 0
+      # Large media uploads to R2 can exceed 10 minutes.
+      activeDeadlineSeconds: 3600
       template:
         metadata:
           labels:
@@ -96,4 +98,4 @@ spec:
             - name: ghost-data
               persistentVolumeClaim:
                 claimName: ghost-data
-          restartPolicy: OnFailure
+          restartPolicy: Never
