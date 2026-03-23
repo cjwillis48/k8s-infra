@@ -6,7 +6,7 @@ metadata:
 spec:
   project: blog
   source:
-    repoURL: git@github.com:cjwillis48/blog.git
+    repoURL: https://github.com/cjwillis48/blog.git
     targetRevision: main
     path: k8s
   destination:

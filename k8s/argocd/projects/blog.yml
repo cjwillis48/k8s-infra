@@ -6,7 +6,7 @@ metadata:
 spec:
   description: My personal ghost blog
   sourceRepos:
-    - git@github.com:cjwillis48/blog.git
+    - https://github.com/cjwillis48/blog.git
   destinations:
     - name: in-cluster
       server: https://kubernetes.default.svc
