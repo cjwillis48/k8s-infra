@@ -6,9 +6,9 @@ metadata:
 spec:
   project: blog
   source:
-    repoURL: git@github.com:cjwillis48/k8s-infra.git
+    repoURL: git@github.com:cjwillis48/blog.git
     targetRevision: main
-    path: k8s/blog
+    path: k8s
   destination:
     server: https://kubernetes.default.svc
     namespace: blog
