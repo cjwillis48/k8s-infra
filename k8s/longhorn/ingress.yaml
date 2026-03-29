@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: longhorn
+  namespace: longhorn-system
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - longhorn.lan.charliewillis.com
+  rules:
+    - host: longhorn.lan.charliewillis.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: longhorn-frontend
+                port:
+                  number: 80

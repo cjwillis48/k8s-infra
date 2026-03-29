@@ -21,6 +21,7 @@ resources:
   - apps/traefik.yml
   - apps/cert-manager.yml
   - apps/pgweb.yml
+  - apps/longhorn.yml
 
 patches:
   - target:
