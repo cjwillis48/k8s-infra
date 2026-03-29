@@ -13,6 +13,14 @@ spec:
       targetRevision: 1.8.1
       helm:
         releaseName: longhorn
+        valuesObject:
+          defaultSettings:
+            backupTarget: s3://k8s-longhorn-backups@auto/
+            backupTargetCredentialSecret: longhorn-backup-creds
+          longhornManager:
+            env:
+              - name: AWS_ENDPOINTS
+                value: "https://0a5f0f60df717358942f04cca4d61c3a.r2.cloudflarestorage.com"
     - repoURL: git@github.com:cjwillis48/k8s-infra.git
       targetRevision: main
       path: k8s/longhorn

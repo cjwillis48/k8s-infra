@@ -5,3 +5,4 @@ namespace: longhorn-system
 resources:
   - storageclass.yaml
   - ingress.yaml
+  - backup-creds.sealed.yaml
