@@ -7,7 +7,7 @@ spec:
   project: ragr
   source:
     repoURL: git@github.com:cjwillis48/ragr.git
-    targetRevision: prod-release-for-publicizing
+    targetRevision: main
     path: k8s
   destination:
     server: https://kubernetes.default.svc
