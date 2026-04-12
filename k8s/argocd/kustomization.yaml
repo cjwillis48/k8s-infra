@@ -11,8 +11,10 @@ resources:
   - projects/platform.yml
   - projects/blog.yml
   - projects/ragr.yml
+  - projects/home-assistant.yml
   - apps/argocd.yml
   - apps/blog.yml
+  - apps/home-assistant.yml
   - apps/cloudflared.yml
   - apps/logging.yml
   - apps/ragr.yml
