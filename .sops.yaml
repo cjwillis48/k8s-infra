@@ -1,5 +1,6 @@
 creation_rules:
-  # Encrypt Ansible group vars
-  - path_regex: ansible/group_vars/.*\.sops\.yml$
+  # Encrypt Ansible group vars — matches both all.sops.yml and the
+  # transient all.sops.dec.yml used by `make encrypt-secrets`.
+  - path_regex: ansible/inventory/group_vars/.*\.sops(\.dec)?\.ya?ml$
     age: >-
       age19pulnwtzah3x4xfp8rsajr7vzddct6lljeurfgu3pc7t9v3cy4gq6xe297

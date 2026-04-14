@@ -1,0 +1,16 @@
+---
+# Routes this node advertises into the tailnet.
+# Overridden per-host/group. Empty list = node joins tailnet but advertises nothing.
+tailscale_advertise_routes: []
+
+# Extra flags passed to `tailscale up`.
+tailscale_ssh: false
+tailscale_accept_dns: false
+tailscale_accept_routes: false
+
+# Hostname registered in the tailnet (defaults to the Ansible inventory hostname).
+tailscale_hostname: "{{ inventory_hostname }}"
+
+# Tailscale apt repo (Ubuntu codename). Autodetected from the target node;
+# override per-host only if you know what you're doing.
+tailscale_apt_codename: "{{ ansible_facts['distribution_release'] }}"
