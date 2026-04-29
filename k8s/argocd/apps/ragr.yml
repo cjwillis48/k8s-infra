@@ -7,7 +7,7 @@ spec:
   project: ragr
   source:
     repoURL: git@github.com:cjwillis48/ragr.git
-    targetRevision: main
+    targetRevision: big-rework-of-crawling
     path: k8s
   destination:
     server: https://kubernetes.default.svc
