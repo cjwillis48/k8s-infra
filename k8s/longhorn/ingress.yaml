@@ -7,9 +7,9 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - longhorn.lan.charliewillis.com
+        - longhorn.charliewillis.com
   rules:
-    - host: longhorn.lan.charliewillis.com
+    - host: longhorn.charliewillis.com
       http:
         paths:
           - path: /

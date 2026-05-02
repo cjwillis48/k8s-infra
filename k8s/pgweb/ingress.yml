@@ -7,9 +7,9 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - pgweb.lan.charliewillis.com
+        - pgweb.charliewillis.com
   rules:
-    - host: pgweb.lan.charliewillis.com
+    - host: pgweb.charliewillis.com
       http:
         paths:
           - path: /

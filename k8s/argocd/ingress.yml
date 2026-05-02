@@ -7,9 +7,9 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - argocd.lan.charliewillis.com
+        - argocd.charliewillis.com
   rules:
-    - host: argocd.lan.charliewillis.com
+    - host: argocd.charliewillis.com
       http:
         paths:
           - path: /
