@@ -5,9 +5,6 @@ metadata:
   namespace: longhorn-system
 spec:
   ingressClassName: traefik
-  tls:
-    - hosts:
-        - longhorn.charliewillis.com
   rules:
     - host: longhorn.charliewillis.com
       http:

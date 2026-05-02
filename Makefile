@@ -1,4 +1,4 @@
-.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret tailscale
+.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret
 
 ANSIBLE_DIR := ansible
 PLAYBOOK_DIR := $(ANSIBLE_DIR)/playbooks
@@ -8,23 +8,19 @@ INVENTORY := $(ANSIBLE_DIR)/inventory/hosts.yml
 bootstrap:
 	./scripts/bootstrap.sh
 
-# Run full provisioning (OS hardening + K3s install + Tailscale)
+# Run full provisioning (OS hardening + K3s install)
 provision:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbooks/provision.yml
 
-# Install / re-configure Tailscale on all nodes only
-tailscale:
-	cd $(ANSIBLE_DIR) && ansible-playbook playbooks/tailscale.yml
-
 # Bootstrap cluster: ArgoCD + sealed-secrets (all other namespaces managed by ArgoCD)
 deploy: kubeconfig
-	kubectl apply -f k8s/namespaces/argocd.yml
+	kubectl apply -f k8s/argocd/namespace.yml
 	kubectl apply -k k8s/sealed-secrets/
 	$(MAKE) deploy-argocd
 
 # Deploy Argo CD platform components
 deploy-argocd:
-	kubectl apply -f k8s/namespaces/argocd.yml
+	kubectl apply -f k8s/argocd/namespace.yml
 	kubectl apply -n argocd -k k8s/argocd/
 
 # Seal a K8s secret using the controller's public cert

@@ -19,9 +19,3 @@
   become: true
   roles:
     - k3s_agent
-
-- name: Install Tailscale on all nodes
-  hosts: all
-  become: true
-  roles:
-    - tailscale

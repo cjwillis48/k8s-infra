@@ -4,14 +4,23 @@ Infrastructure-as-code for **Homie**, a two-node K3s cluster running on Raspberr
 
 ## Architecture
 
+Public blog (the one path that goes through Cloudflare):
+
 ```
 Internet → Cloudflare CDN → Cloudflare Tunnel → cloudflared pod → Ghost pod
+```
+
+Private services (`argocd`, `pgweb`, `longhorn`):
+
+```
+Tailnet client → external reverse proxy (TLS termination) → Traefik on K3s (HTTP) → service pod
 ```
 
 - **Node 1** (192.168.6.200) — K3s control plane
 - **Node 2** (192.168.6.201) — K3s worker, Ghost + storage (917GB SSD)
 - **No open ports** — cloudflared dials out to Cloudflare, nothing dials in
 - **Network isolated** — dedicated VLAN 6, zone-based firewall, only SSH/kubectl allowed from management network
+- **No TLS or auth in this cluster, on purpose** — `argocd/pgweb/longhorn.charliewillis.com` are terminated by an external reverse proxy on a separate box, reached over Tailscale. The cluster itself is HTTP-only and the perimeter is intentionally out of scope for this repo. Don't reintroduce cert-manager Certificates, Traefik TLSStores, or Tailscale on the cluster.
 
 ## Stack
 
@@ -21,12 +30,13 @@ Internet → Cloudflare CDN → Cloudflare Tunnel → cloudflared pod → Ghost 
 | K8s | K3s v1.31.4 |
 | GitOps | Argo CD (app-of-apps auto-sync, internal-only access) |
 | Blog | Ghost 5.x (SQLite) |
-| TLS | Let's Encrypt wildcard via cert-manager + Cloudflare DNS-01 |
-| LAN Ingress | Traefik + MetalLB → `*.lan.charliewillis.com` (internal services) |
-| External Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) |
+| TLS | Terminated upstream (Cloudflare for the blog, an external reverse proxy for private services). The cluster itself only speaks HTTP. |
+| Ingress | Traefik + MetalLB; HTTP-only |
+| External Ingress | Cloudflare Tunnel (QUIC/7844, outbound only) — blog only |
+| Block Storage | Longhorn (single-replica today, S3 backups to Cloudflare R2) |
 | K8s Secrets | Bitnami Sealed Secrets (SealedSecret CRD, synced by ArgoCD) |
 | Ansible Secrets | SOPS + age encryption (provisioning only) |
-| Backups | Daily Ghost backup to Cloudflare R2 (CronJob, 30-day retention) |
+| Backups | Daily Ghost backup to Cloudflare R2 (CronJob, 30-day retention); Longhorn volume backups to R2 |
 | Log Shipping | Vector DaemonSet → Axiom dataset |
 | Provisioning | Ansible |
 
@@ -42,15 +52,20 @@ k8s-infra/
 │       ├── k3s_server/     # Control plane install + config
 │       └── k3s_agent/      # Worker node install + join
 ├── k8s/
-│   ├── argocd/             # Argo CD install, Application CRDs, projects, ingress, namespace
-│   ├── blog/               # Ghost deployment, service, PVC, backup CronJob, namespace
-│   ├── cert-manager/       # ClusterIssuer + Cloudflare API token
+│   ├── argocd/             # Argo CD install + ingress + namespace
+│   │   ├── apps/           # Application CRDs (one per workload)
+│   │   ├── projects/       # AppProject CRDs (platform + per-app projects)
+│   │   └── network-policies.yml
+│   ├── cert-manager/       # ClusterIssuer + sealed Cloudflare API token (currently unused — kept for future certs)
 │   ├── cloudflared/        # Deployment + sealed tunnel token, namespace
-│   ├── logging/            # Vector DaemonSet + Axiom config, namespace
+│   ├── ghost/              # (stub — blog manifests live in cjwillis48/blog repo)
+│   ├── logging/            # Vector DaemonSet + sealed Axiom config, namespace
+│   ├── longhorn/           # Longhorn ingress, storageclass, sealed S3 backup creds
 │   ├── metallb/            # IP pool + L2 advertisement + network policies
+│   ├── network-policies/   # Cluster-wide default-deny + shared allow rules
 │   ├── pgweb/              # PGWeb deployment, ingress, network policies, namespace
-│   ├── sealed-secrets/     # Sealed Secrets controller (kustomize remote base)
-│   └── traefik/            # TLS certificate, TLSStore, network policies
+│   ├── sealed-secrets/     # Sealed Secrets controller (kustomize remote base) + pub cert
+│   └── traefik/            # Network policies for the Traefik namespace
 ├── scripts/
 │   ├── bootstrap.sh        # Install Mac deps (incl. kubeseal), generate age key
 │   ├── fetch-kubeconfig.sh # SCP kubeconfig from node-1
@@ -105,7 +120,7 @@ rm /tmp/axiom-credentials.secret.yml
 make deploy
 
 # 8. Open ArgoCD UI — all apps auto-sync from git
-# https://argocd.lan.charliewillis.com
+# https://argocd.charliewillis.com
 
 # Verify
 make status
@@ -119,7 +134,21 @@ make status-logging
 
 K8s secrets are managed via [Bitnami Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets). SealedSecret resources are safe to commit to git — they can only be decrypted by the controller running in the cluster.
 
-To create or rotate any sealed secret:
+The controller's public cert is stored at `k8s/sealed-secrets/sealed-secrets-pub.pem` for offline sealing. Only commit the sealed output — ArgoCD syncs it to the cluster.
+
+#### Preferred workflow: `mcp-sealed-secrets` MCP server
+
+Day-to-day, sealed secrets are managed through the project's `mcp-sealed-secrets` MCP server, which exposes three tools to Claude Code:
+
+- `list_sealed_secrets` — enumerate existing sealed secrets in the repo
+- `seal_secret` — seal a new plaintext secret (no temp files needed)
+- `edit_sealed_secret` — decrypt, edit in place, and re-seal an existing `*.sealed.yml` without ever writing plaintext to disk
+
+Just ask Claude to "edit the axiom credentials sealed secret" or "seal a new secret for `<app>`" and it'll call the right tool.
+
+#### Manual fallback: `make seal-secret`
+
+If you're working without the MCP server (e.g. on a fresh machine), seal secrets the old-fashioned way:
 
 ```bash
 # 1. Write a temporary plaintext secret (never commit this)
@@ -140,8 +169,6 @@ make seal-secret IN=/tmp/my-secret.yml OUT=k8s/<app>/my-secret.sealed.yml
 # 3. Clean up plaintext
 rm /tmp/my-secret.yml
 ```
-
-The controller's public cert is stored at `k8s/sealed-secrets/sealed-secrets-pub.pem` for offline sealing. Only commit the sealed output — ArgoCD syncs it to the cluster.
 
 ### Ansible Secrets — SOPS + age
 
@@ -164,10 +191,26 @@ make encrypt-secrets   # Re-encrypt after editing
 
 ## Argo CD
 
-Argo CD runs in the `argocd` namespace and manages all workloads via the app-of-apps pattern. The parent `argocd` Application auto-syncs from git. All child Applications also auto-sync with self-heal and prune. Application manifests live in `k8s/argocd/apps/`.
+Argo CD runs in the `argocd` namespace and manages all workloads via the app-of-apps pattern. The parent `argocd` Application auto-syncs from git. All child Applications also auto-sync with self-heal and prune. Application manifests live in `k8s/argocd/apps/` and AppProjects live in `k8s/argocd/projects/`.
 
-- **LAN access**: `https://argocd.lan.charliewillis.com` (TLS via wildcard cert)
+- **Access**: `https://argocd.charliewillis.com` (Tailnet required; TLS terminated by the upstream reverse proxy)
 - **Network isolation**: `argocd` namespace has default-deny ingress plus explicit allow rules for Traefik and internal component traffic.
+
+Apps currently managed by ArgoCD:
+
+| App | Source | Notes |
+|-----|--------|-------|
+| `argocd` | this repo (`k8s/argocd`) | Self-managed, app-of-apps root |
+| `sealed-secrets` | this repo (`k8s/sealed-secrets`) | Controller for `SealedSecret` CRDs |
+| `cert-manager` | Helm chart + this repo | Installed but currently unused — kept for future certs |
+| `traefik` | this repo (`k8s/traefik`) | HTTP ingress (TLS lives upstream) |
+| `metallb` | Helm chart + this repo | LoadBalancer IP pool for Traefik |
+| `cloudflared` | this repo (`k8s/cloudflared`) | Cloudflare Tunnel — fronts the public blog only |
+| `longhorn` | Helm chart + this repo | Block storage + R2 backups |
+| `logging` | this repo (`k8s/logging`) | Vector → Axiom |
+| `pgweb` | this repo (`k8s/pgweb`) | Web UI for ad-hoc Postgres access |
+| `blog` | external (`cjwillis48/blog`) | Ghost manifests in their own repo |
+| `ragr` | external (`cjwillis48/ragr`) | RAG service in its own repo |
 
 Get the initial admin password:
 
@@ -203,7 +246,7 @@ In **the app repo**:
 4. Include a `Namespace` resource with Pod Security Standards labels (`restricted` unless you need `privileged`)
 5. Include a `NetworkPolicy` with default-deny ingress + explicit allow rules for expected traffic
 6. Include all workload manifests (Deployment, Service, Sealed Secrets, etc.) under a `k8s/` directory
-7. If the app needs LAN access, include an Ingress for `<app>.lan.charliewillis.com` — TLS is automatic via the wildcard cert and Traefik TLSStore
+7. If the app needs to be reachable, include an HTTP-only Ingress for `<app>.charliewillis.com`. TLS lives upstream — for private/Tailnet-only services, add a proxy entry to the upstream reverse proxy targeting the cluster's MetalLB IP; for public services, add the host to the Cloudflare Tunnel config so cloudflared routes to Traefik.
 
 #### Platform-managed app in this repo (e.g. PGWeb)
 
@@ -215,6 +258,8 @@ In **the app repo**:
 ## Backups
 
 Ghost content (SQLite DB + images/themes) is backed up daily at 3am to Cloudflare R2 via a Kubernetes CronJob. Each backup is stored as a timestamped directory in the `ghost-backups` R2 bucket. Backups older than 30 days are automatically pruned.
+
+Longhorn volumes are backed up to a separate R2 bucket (`k8s-longhorn-backups`) using credentials from the `longhorn-backup-creds` sealed secret. Schedule and retention are configured in the Longhorn UI at `https://longhorn.charliewillis.com`.
 
 Manual backup to local machine (legacy):
 

@@ -5,9 +5,6 @@ metadata:
   namespace: pgweb
 spec:
   ingressClassName: traefik
-  tls:
-    - hosts:
-        - pgweb.charliewillis.com
   rules:
     - host: pgweb.charliewillis.com
       http:

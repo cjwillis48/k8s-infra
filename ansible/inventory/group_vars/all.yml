@@ -16,9 +16,3 @@ ssh_allowed_user: "charlie"
 # K3s server node
 k3s_server_ip: "192.168.6.200"
 k3s_server_hostname: "homie-k8s-node-1"
-
-# Tailscale: every node advertises the Homie VLAN so any node can act as
-# subnet router (automatic failover in the tailnet). New nodes picked up
-# from inventory get this for free.
-tailscale_advertise_routes:
-  - "{{ vlan_cidr }}"

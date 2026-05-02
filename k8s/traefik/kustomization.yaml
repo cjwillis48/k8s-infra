@@ -4,5 +4,3 @@ namespace: traefik
 
 resources:
   - network-policies.yml
-  - certificate.yml
-  - tlsstore.yml
