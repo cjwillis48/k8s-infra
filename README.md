@@ -20,7 +20,7 @@ Tailnet client → external reverse proxy (TLS termination) → Traefik on K3s (
 - **Node 2** (192.168.6.201) — K3s worker, Ghost + storage (917GB SSD)
 - **No open ports** — cloudflared dials out to Cloudflare, nothing dials in
 - **Network isolated** — dedicated VLAN 6, zone-based firewall, only SSH/kubectl allowed from management network
-- **No TLS or auth in this cluster, on purpose** — `argocd/pgweb/longhorn.charliewillis.com` are terminated by an external reverse proxy on a separate box, reached over Tailscale. The cluster itself is HTTP-only and the perimeter is intentionally out of scope for this repo. Don't reintroduce cert-manager Certificates, Traefik TLSStores, or Tailscale on the cluster.
+- **No TLS or auth in this cluster, on purpose** — `argocd/pgweb/longhorn.home.charliewillis.com` are terminated by an external reverse proxy on a separate box, reached over Tailscale. The cluster itself is HTTP-only and the perimeter is intentionally out of scope for this repo. Don't reintroduce cert-manager Certificates, Traefik TLSStores, or Tailscale on the cluster.
 
 ## Stack
 
@@ -120,7 +120,7 @@ rm /tmp/axiom-credentials.secret.yml
 make deploy
 
 # 8. Open ArgoCD UI — all apps auto-sync from git
-# https://argocd.charliewillis.com
+# https://argocd.home.charliewillis.com
 
 # Verify
 make status
@@ -193,7 +193,7 @@ make encrypt-secrets   # Re-encrypt after editing
 
 Argo CD runs in the `argocd` namespace and manages all workloads via the app-of-apps pattern. The parent `argocd` Application auto-syncs from git. All child Applications also auto-sync with self-heal and prune. Application manifests live in `k8s/argocd/apps/` and AppProjects live in `k8s/argocd/projects/`.
 
-- **Access**: `https://argocd.charliewillis.com` (Tailnet required; TLS terminated by the upstream reverse proxy)
+- **Access**: `https://argocd.home.charliewillis.com` (Tailnet required; TLS terminated by the upstream reverse proxy)
 - **Network isolation**: `argocd` namespace has default-deny ingress plus explicit allow rules for Traefik and internal component traffic.
 
 Apps currently managed by ArgoCD:
@@ -246,7 +246,7 @@ In **the app repo**:
 4. Include a `Namespace` resource with Pod Security Standards labels (`restricted` unless you need `privileged`)
 5. Include a `NetworkPolicy` with default-deny ingress + explicit allow rules for expected traffic
 6. Include all workload manifests (Deployment, Service, Sealed Secrets, etc.) under a `k8s/` directory
-7. If the app needs to be reachable, include an HTTP-only Ingress for `<app>.charliewillis.com`. TLS lives upstream — for private/Tailnet-only services, add a proxy entry to the upstream reverse proxy targeting the cluster's MetalLB IP; for public services, add the host to the Cloudflare Tunnel config so cloudflared routes to Traefik.
+7. If the app needs to be reachable, include an HTTP-only Ingress for `<app>.home.charliewillis.com`. TLS lives upstream — for private/Tailnet-only services, add a proxy entry to the upstream reverse proxy targeting the cluster's MetalLB IP; for public services, add the host to the Cloudflare Tunnel config so cloudflared routes to Traefik.
 
 #### Platform-managed app in this repo (e.g. PGWeb)
 
@@ -259,7 +259,7 @@ In **the app repo**:
 
 Ghost content (SQLite DB + images/themes) is backed up daily at 3am to Cloudflare R2 via a Kubernetes CronJob. Each backup is stored as a timestamped directory in the `ghost-backups` R2 bucket. Backups older than 30 days are automatically pruned.
 
-Longhorn volumes are backed up to a separate R2 bucket (`k8s-longhorn-backups`) using credentials from the `longhorn-backup-creds` sealed secret. Schedule and retention are configured in the Longhorn UI at `https://longhorn.charliewillis.com`.
+Longhorn volumes are backed up to a separate R2 bucket (`k8s-longhorn-backups`) using credentials from the `longhorn-backup-creds` sealed secret. Schedule and retention are configured in the Longhorn UI at `https://longhorn.home.charliewillis.com`.
 
 Manual backup to local machine (legacy):
 

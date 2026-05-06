@@ -6,7 +6,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: longhorn.charliewillis.com
+    - host: longhorn.home.charliewillis.com
       http:
         paths:
           - path: /

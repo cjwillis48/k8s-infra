@@ -6,7 +6,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: argocd.charliewillis.com
+    - host: argocd.home.charliewillis.com
       http:
         paths:
           - path: /
