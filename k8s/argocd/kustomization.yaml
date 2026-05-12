@@ -22,6 +22,8 @@ resources:
   - apps/cert-manager.yml
   - apps/pgweb.yml
   - apps/longhorn.yml
+  - apps/node-exporter.yml
+  - apps/kube-state-metrics.yml
 
 patches:
   - target:
