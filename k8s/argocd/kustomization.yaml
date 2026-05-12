@@ -24,6 +24,7 @@ resources:
   - apps/longhorn.yml
   - apps/node-exporter.yml
   - apps/kube-state-metrics.yml
+  - apps/otel-collector.yml
 
 patches:
   - target:
