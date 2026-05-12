@@ -60,14 +60,16 @@ spec:
           processors:
             batch: {}
           exporters:
-            otlphttp/tempo:
-              endpoint: http://192.168.1.185:3200
+            otlp/tempo:
+              endpoint: 192.168.1.185:4317
+              tls:
+                insecure: true
           service:
             pipelines:
               traces:
                 receivers: [otlp]
                 processors: [batch]
-                exporters: [otlphttp/tempo]
+                exporters: [otlp/tempo]
               metrics: null
               logs: null
   destination:
