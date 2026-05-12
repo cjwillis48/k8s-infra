@@ -61,7 +61,7 @@ spec:
             batch: {}
           exporters:
             otlphttp/tempo:
-              endpoint: http://192.168.1.125:3200
+              endpoint: http://192.168.1.185:3200
           service:
             pipelines:
               traces:
