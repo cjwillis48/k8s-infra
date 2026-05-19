@@ -1,4 +1,4 @@
-.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret
+.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret tailscale
 
 ANSIBLE_DIR := ansible
 PLAYBOOK_DIR := $(ANSIBLE_DIR)/playbooks
@@ -38,6 +38,10 @@ backup-blog:
 # Full setup: provision nodes then deploy workloads
 site:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbooks/site.yml
+
+# Install/configure Tailscale on all nodes (per-node /32 self-advertise)
+tailscale:
+	cd $(ANSIBLE_DIR) && ansible-playbook playbooks/tailscale.yml
 
 # Fetch kubeconfig from node-1
 kubeconfig:

@@ -16,3 +16,11 @@ ssh_allowed_user: "charlie"
 # K3s server node
 k3s_server_ip: "192.168.6.200"
 k3s_server_hostname: "homie-k8s-node-1"
+
+# Tailscale: each node advertises ONLY its own LAN IP as a /32 so off-network
+# SSH works against the existing 192.168.6.x addresses without a subnet router
+# (keeps UDR7 / the UniFi zone matrix as the enforcement layer for all other
+# traffic — no L2 bridge between zones). Auto-scales to any node added to
+# inventory. tailscale_auth_key comes from all.sops.yml (tagged, reusable).
+tailscale_advertise_routes:
+  - "{{ ansible_host }}/32"

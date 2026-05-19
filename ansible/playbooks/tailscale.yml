@@ -1,0 +1,9 @@
+---
+# Install and configure Tailscale on all nodes.
+# Usage: ansible-playbook -i inventory/hosts.yml playbooks/tailscale.yml
+
+- name: Install Tailscale on all nodes
+  hosts: all
+  become: true
+  roles:
+    - tailscale
