@@ -61,7 +61,7 @@ spec:
             batch: {}
           exporters:
             otlp/tempo:
-              endpoint: 192.168.1.185:4317
+              endpoint: 192.168.7.10:4317
               tls:
                 insecure: true
           service:
