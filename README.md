@@ -240,7 +240,9 @@ Use multi-source Applications to combine a Helm chart with git-based config in a
 
 #### Custom app in its own repo
 
-In **k8s-infra** (this repo) — one entry in `k8s/tenants/values.yaml`:
+In **k8s-infra** (this repo) — one entry in `k8s/tenants/values.yaml`. Fastest path: in Claude Code run
+`/add-homie-project <repo>` — it preflights the repo (public, `k8s/` renders, one matching `Namespace`, no
+cluster-scoped kinds, kinds vs. the baseline whitelist), adds the entry, and runs the gate below. By hand:
 
 ```yaml
 tenants:
