@@ -1,0 +1,10 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+spec:
+  description: Locked down. Every Application must use platform or a tenant project.
+  sourceRepos: []
+  destinations: []
+  clusterResourceWhitelist: []

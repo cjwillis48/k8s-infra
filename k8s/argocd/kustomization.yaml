@@ -9,6 +9,7 @@ resources:
   - ingress.yml
   - network-policies.yml
   - projects/platform.yml
+  - projects/default.yml
   - apps/argocd.yml
   - apps/tenants.yml
   - apps/cloudflared.yml
