@@ -1,0 +1,34 @@
+---
+# Deliberate, on-demand OS package updates.
+# Security patches are already automated (unattended-upgrades, security origin,
+# no auto-reboot — see roles/common). This covers the non-security backlog and
+# kernel updates, run when you're watching.
+#
+# Usage:
+#   make update                          # upgrade + reboot nodes that need it
+#   ansible-playbook playbooks/update.yml -e update_reboot=false   # apply only, defer reboots
+#
+# serial: 1 = one node at a time so the K3s server reboots and recovers before
+# the agent does — keeps the cluster/blog rolling instead of a full outage.
+
+- name: Update OS packages
+  hosts: all
+  become: true
+  serial: 1
+  vars:
+    update_reboot: true
+  tasks:
+    - name: Upgrade all apt packages (dist) and autoremove
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        autoremove: true
+
+    - name: Check whether a reboot is required
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+
+    - name: Reboot if required (kernel/libc updates)
+      ansible.builtin.reboot:
+      when: update_reboot | bool and reboot_required.stat.exists
