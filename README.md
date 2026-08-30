@@ -258,7 +258,8 @@ tenants:
 2. Commit and push. The `tenants` Application renders an AppProject (that repo → that namespace, `Namespace` is the only cluster-scoped kind allowed) and an auto-syncing Application with `selfHeal` + `prune`
 3. Removing the entry deletes the Application/AppProject **without** cascading to workloads (no resources finalizer); tear the namespace down by hand if you really mean it
 
-In **the app repo**:
+In **the app repo**: fastest path, run `/scaffold-homie-app <repo-dir>` in Claude Code — it interactively
+produces steps 4–7 below following Homie's manifest conventions, then hands off to `/add-homie-project`. By hand:
 
 4. Include a `Namespace` resource with Pod Security Standards labels (`restricted` unless you need `privileged`)
 5. Include a `NetworkPolicy` with default-deny ingress + explicit allow rules for expected traffic
