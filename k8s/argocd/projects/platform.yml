@@ -7,7 +7,6 @@ spec:
   description: Kubernetes infra
   sourceRepos:
     - https://github.com/cjwillis48/k8s-infra.git
-    - git@github.com:cjwillis48/k8s-infra.git
     - https://metallb.github.io/metallb
     - https://traefik.github.io/charts
     - https://charts.jetstack.io
