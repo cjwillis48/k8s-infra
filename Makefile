@@ -36,8 +36,8 @@ tenants-lint:
 
 # Diff rendered tenant AppProjects/Applications against the live cluster.
 # Run before pushing any change to k8s/tenants/values.yaml.
-tenants-diff: kubeconfig
-	helm template tenants k8s/tenants | kubectl diff -f -
+tenants-diff:
+	helm template tenants k8s/tenants | KUBECONFIG=$${KUBECONFIG:-kubeconfig} kubectl diff -f - ; test $$? -le 1
 
 # Backup blog content and sqlite database locally
 backup-blog:
