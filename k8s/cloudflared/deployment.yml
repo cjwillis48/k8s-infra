@@ -6,7 +6,7 @@ metadata:
   labels:
     app: cloudflared
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: cloudflared
@@ -21,9 +21,18 @@ spec:
         runAsUser: 65532
         seccompProfile:
           type: RuntimeDefault
+      # Spread connectors across both nodes; soft so a rollout still
+      # completes while one node is draining.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: cloudflared
       containers:
         - name: cloudflared
-          image: cloudflare/cloudflared:2024.12.2
+          image: cloudflare/cloudflared:2026.8.2
           args:
             - tunnel
             - --no-autoupdate
@@ -49,9 +58,23 @@ spec:
             capabilities:
               drop:
                 - ALL
+          # /ready is 200 only once the connector has live edge connections,
+          # so rollouts wait for real tunnel connectivity before shifting traffic.
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 2000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # Same endpoint, but tolerant: only restart after ~3 minutes of
+          # sustained failure, not a transient edge reconnect.
           livenessProbe:
             httpGet:
               path: /ready
               port: 2000
             initialDelaySeconds: 10
             periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
