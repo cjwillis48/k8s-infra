@@ -1,0 +1,20 @@
+{{- range $name, $t := .Values.tenants }}
+{{- $cfg := $t | default (dict) }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.argocdNamespace }}
+spec:
+  description: {{ $cfg.description | default (printf "Tenant workload: %s" $name) | quote }}
+  sourceRepos:
+    - {{ required (printf "tenants.%s.repoURL is required" $name) $cfg.repoURL }}
+  destinations:
+    - server: {{ $.Values.defaults.server }}
+      namespace: {{ $cfg.namespace | default $name }}
+  clusterResourceWhitelist:
+    {{- toYaml $.Values.defaults.clusterResourceWhitelist | nindent 4 }}
+  namespaceResourceWhitelist:
+    {{- concat $.Values.defaults.namespaceResourceWhitelist ($cfg.extraKinds | default (list)) | uniq | toYaml | nindent 4 }}
+{{- end }}

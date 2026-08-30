@@ -1,17 +1,19 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: blog
+  name: tenants
   namespace: argocd
 spec:
-  project: blog
+  project: platform
   source:
-    repoURL: https://github.com/cjwillis48/blog.git
+    repoURL: https://github.com/cjwillis48/k8s-infra.git
     targetRevision: main
-    path: k8s
+    path: k8s/tenants
+    helm:
+      releaseName: tenants
   destination:
     server: https://kubernetes.default.svc
-    namespace: blog
+    namespace: argocd
   syncPolicy:
     automated:
       selfHeal: true

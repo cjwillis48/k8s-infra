@@ -1,0 +1,22 @@
+{{- range $name, $t := .Values.tenants }}
+{{- $cfg := $t | default (dict) }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Values.argocdNamespace }}
+  # Deliberately no resources-finalizer.argocd.argoproj.io: removing a tenant
+  # from values must never cascade-delete its workloads or PVCs.
+spec:
+  project: {{ $name }}
+  source:
+    repoURL: {{ required (printf "tenants.%s.repoURL is required" $name) $cfg.repoURL }}
+    targetRevision: {{ $cfg.targetRevision | default $.Values.defaults.targetRevision | quote }}
+    path: {{ $cfg.path | default $.Values.defaults.path }}
+  destination:
+    server: {{ $.Values.defaults.server }}
+    namespace: {{ $cfg.namespace | default $name }}
+  syncPolicy:
+    {{- toYaml ($cfg.syncPolicy | default $.Values.defaults.syncPolicy) | nindent 4 }}
+{{- end }}

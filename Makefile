@@ -1,4 +1,4 @@
-.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret tailscale update
+.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret tailscale update tenants-lint tenants-diff
 
 ANSIBLE_DIR := ansible
 PLAYBOOK_DIR := $(ANSIBLE_DIR)/playbooks
@@ -29,6 +29,15 @@ seal-secret:
 	kubeseal --format yaml \
 		--cert k8s/sealed-secrets/sealed-secrets-pub.pem \
 		< $(IN) > $(OUT)
+
+# Lint the tenant registry chart (k8s/tenants)
+tenants-lint:
+	helm lint k8s/tenants
+
+# Diff rendered tenant AppProjects/Applications against the live cluster.
+# Run before pushing any change to k8s/tenants/values.yaml.
+tenants-diff: kubeconfig
+	helm template tenants k8s/tenants | kubectl diff -f -
 
 # Backup blog content and sqlite database locally
 backup-blog:

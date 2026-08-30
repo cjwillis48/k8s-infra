@@ -9,13 +9,10 @@ resources:
   - ingress.yml
   - network-policies.yml
   - projects/platform.yml
-  - projects/blog.yml
-  - projects/ragr.yml
   - apps/argocd.yml
-  - apps/blog.yml
+  - apps/tenants.yml
   - apps/cloudflared.yml
   - apps/logging.yml
-  - apps/ragr.yml
   - apps/sealed-secrets.yml
   - apps/metallb.yml
   - apps/traefik.yml

@@ -1,0 +1,79 @@
+# Tenant registry for workload repos deployed to Homie.
+#
+# Onboarding a new repo = one entry under `tenants:` below. The chart renders a
+# per-tenant AppProject (trust boundary: that repo -> that namespace, Namespace
+# is the only cluster-scoped kind) and an Application (auto-sync, self-heal,
+# prune). The workload repo owns everything namespaced, including its Namespace.
+#
+# Before pushing a change here run:  make tenants-diff
+
+# Namespace Argo CD runs in. Rendered CRs land here regardless of `helm -n`.
+argocdNamespace: argocd
+
+defaults:
+  server: https://kubernetes.default.svc
+  path: k8s
+  targetRevision: main
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+  # Tenants may create only their own Namespace at cluster scope.
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  # "team-app" baseline: union of what blog/ragr/homie-stress-kafka ship, plus
+  # Ingress (README onboarding step 7) and namespaced RBAC. No DaemonSet on
+  # purpose (node-wide footprint) -- add via `extraKinds` if a tenant needs it.
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Secret
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: batch
+      kind: Job
+    - group: batch
+      kind: CronJob
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: bitnami.com
+      kind: SealedSecret
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
+
+# One entry per workload repo.
+#   key            -> Application name, AppProject name, and (unless overridden) namespace.
+#                     DNS-1123. Renaming a key is delete + create; treat keys as immutable.
+#   repoURL        -> required. HTTPS for public repos (no Argo credential needed).
+#   namespace      -> optional, defaults to the key.
+#   path           -> optional, defaults to `k8s`.
+#   targetRevision -> optional, defaults to `main`. Flip here to track a branch.
+#   description    -> optional.
+#   extraKinds     -> optional list of {group, kind} added to the namespace whitelist.
+#   syncPolicy     -> optional full override of defaults.syncPolicy.
+tenants:
+  blog:
+    repoURL: https://github.com/cjwillis48/blog.git
+    description: My personal ghost blog
+  ragr:
+    repoURL: https://github.com/cjwillis48/ragr.git
+    description: RAGr web app and related infra
+  # TODO: enable once github.com/cjwillis48/homie-stress-kafka exists with k8s/ on main.
+  # homie-stress-kafka:
+  #   repoURL: https://github.com/cjwillis48/homie-stress-kafka.git
+  #   namespace: homie-stress
+  #   description: Kafka stress-test rig (broker, streams-app, load-gen)

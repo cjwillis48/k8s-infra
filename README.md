@@ -53,8 +53,8 @@ k8s-infra/
 │       └── k3s_agent/      # Worker node install + join
 ├── k8s/
 │   ├── argocd/             # Argo CD install + ingress + namespace
-│   │   ├── apps/           # Application CRDs (one per workload)
-│   │   ├── projects/       # AppProject CRDs (platform + per-app projects)
+│   │   ├── apps/           # Application CRDs for platform components (+ the `tenants` app)
+│   │   ├── projects/       # AppProject CRDs (platform, locked-down default)
 │   │   └── network-policies.yml
 │   ├── cert-manager/       # ClusterIssuer + sealed Cloudflare API token (currently unused — kept for future certs)
 │   ├── cloudflared/        # Deployment + sealed tunnel token, namespace
@@ -65,6 +65,7 @@ k8s-infra/
 │   ├── network-policies/   # Cluster-wide default-deny + shared allow rules
 │   ├── pgweb/              # PGWeb deployment, ingress, network policies, namespace
 │   ├── sealed-secrets/     # Sealed Secrets controller (kustomize remote base) + pub cert
+│   ├── tenants/            # Helm chart: one values entry per workload repo → AppProject + Application
 │   └── traefik/            # Network policies for the Traefik namespace
 ├── scripts/
 │   ├── bootstrap.sh        # Install Mac deps (incl. kubeseal), generate age key
@@ -191,7 +192,7 @@ make encrypt-secrets   # Re-encrypt after editing
 
 ## Argo CD
 
-Argo CD runs in the `argocd` namespace and manages all workloads via the app-of-apps pattern. The parent `argocd` Application auto-syncs from git. All child Applications also auto-sync with self-heal and prune. Application manifests live in `k8s/argocd/apps/` and AppProjects live in `k8s/argocd/projects/`.
+Argo CD runs in the `argocd` namespace and manages all workloads via the app-of-apps pattern. The parent `argocd` Application auto-syncs from git. All child Applications also auto-sync with self-heal and prune. Platform Application manifests live in `k8s/argocd/apps/` and the `platform` AppProject in `k8s/argocd/projects/`. Workload repos (blog, ragr, …) are registered in `k8s/tenants/values.yaml`: the `tenants` Application renders a scoped AppProject + Application per entry, so onboarding a repo never touches `k8s/argocd/`. Every git source is public and fetched over HTTPS — Argo CD holds no repo credentials.
 
 - **Access**: `https://argocd.home.charliewillis.com` (Tailnet required; TLS terminated by the upstream reverse proxy)
 - **Network isolation**: `argocd` namespace has default-deny ingress plus explicit allow rules for Traefik and internal component traffic.
@@ -209,8 +210,12 @@ Apps currently managed by ArgoCD:
 | `longhorn` | Helm chart + this repo | Block storage + R2 backups |
 | `logging` | this repo (`k8s/logging`) | Vector → Axiom |
 | `pgweb` | this repo (`k8s/pgweb`) | Web UI for ad-hoc Postgres access |
-| `blog` | external (`cjwillis48/blog`) | Ghost manifests in their own repo |
-| `ragr` | external (`cjwillis48/ragr`) | RAG service in its own repo |
+| `node-exporter` | Helm chart + this repo | Host metrics, scraped by Prometheus on Proxmox |
+| `kube-state-metrics` | Helm chart | Cluster object metrics on MetalLB `192.168.6.241` |
+| `otel-collector` | Helm chart | Node-local OTLP collector → Tempo on Proxmox |
+| `tenants` | this repo (`k8s/tenants`) | Helm chart rendering one AppProject + Application per workload repo |
+| `blog` | external (`cjwillis48/blog`), via `tenants` | Ghost manifests in their own repo |
+| `ragr` | external (`cjwillis48/ragr`), via `tenants` | RAG service in its own repo |
 
 Get the initial admin password:
 
@@ -235,11 +240,21 @@ Use multi-source Applications to combine a Helm chart with git-based config in a
 
 #### Custom app in its own repo
 
-In **k8s-infra** (this repo):
+In **k8s-infra** (this repo) — one entry in `k8s/tenants/values.yaml`:
 
-1. Add `k8s/argocd/projects/<app>.yml` — AppProject scoped to the app's git repo and namespace
-2. Add `k8s/argocd/apps/<app>.yml` — Application CRD with `automated: {selfHeal: true, prune: true}`
-3. Add both to `k8s/argocd/kustomization.yaml`
+```yaml
+tenants:
+  <app>:
+    repoURL: https://github.com/cjwillis48/<app>.git   # public → HTTPS, no credential needed
+    # namespace: <ns>          # defaults to <app>
+    # targetRevision: <branch> # defaults to main — flip here to track a branch
+    # path: <dir>              # defaults to k8s
+    # extraKinds: [{group: apps, kind: DaemonSet}]   # beyond the team-app baseline
+```
+
+1. Add the entry, then `make tenants-diff` — the only acceptable hunks on an existing tenant are additive whitelist entries; any change under an `Application`'s `spec` means stop
+2. Commit and push. The `tenants` Application renders an AppProject (that repo → that namespace, `Namespace` is the only cluster-scoped kind allowed) and an auto-syncing Application with `selfHeal` + `prune`
+3. Removing the entry deletes the Application/AppProject **without** cascading to workloads (no resources finalizer); tear the namespace down by hand if you really mean it
 
 In **the app repo**:
 

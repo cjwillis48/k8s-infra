@@ -1,0 +1,5 @@
+apiVersion: v2
+name: tenants
+description: One AppProject + Application per workload repo onboarded to Homie
+type: application
+version: 0.1.0
