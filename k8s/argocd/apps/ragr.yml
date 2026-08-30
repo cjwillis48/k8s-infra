@@ -6,7 +6,7 @@ metadata:
 spec:
   project: ragr
   source:
-    repoURL: git@github.com:cjwillis48/ragr.git
+    repoURL: https://github.com/cjwillis48/ragr.git
     targetRevision: main
     path: k8s
   destination:

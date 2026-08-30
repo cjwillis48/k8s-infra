@@ -30,7 +30,7 @@ spec:
                     to: websecure
                     scheme: https
                     permanent: true
-    - repoURL: git@github.com:cjwillis48/k8s-infra.git
+    - repoURL: https://github.com/cjwillis48/k8s-infra.git
       targetRevision: main
       path: k8s/traefik
   destination:

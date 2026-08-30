@@ -17,7 +17,7 @@ spec:
           defaultSettings:
             backupTarget: "s3://k8s-longhorn-backups@auto/"
             backupTargetCredentialSecret: longhorn-backup-creds
-    - repoURL: git@github.com:cjwillis48/k8s-infra.git
+    - repoURL: https://github.com/cjwillis48/k8s-infra.git
       targetRevision: main
       path: k8s/longhorn
   destination:

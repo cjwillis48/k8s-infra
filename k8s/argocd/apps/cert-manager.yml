@@ -17,7 +17,7 @@ spec:
           global:
             podSecurityPolicy:
               enabled: false
-    - repoURL: git@github.com:cjwillis48/k8s-infra.git
+    - repoURL: https://github.com/cjwillis48/k8s-infra.git
       targetRevision: main
       path: k8s/cert-manager
   destination:
