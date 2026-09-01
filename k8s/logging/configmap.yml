@@ -12,6 +12,9 @@ data:
         type: kubernetes_logs
         self_node_name: ${VECTOR_SELF_NODE_NAME}
 
+      internal_metrics:
+        type: internal_metrics
+
     sinks:
       axiom:
         type: http
@@ -27,3 +30,9 @@ data:
           codec: json
         framing:
           method: newline_delimited
+
+      metrics:
+        type: prometheus_exporter
+        inputs:
+          - internal_metrics
+        address: 0.0.0.0:9598

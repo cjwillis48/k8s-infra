@@ -20,6 +20,26 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # hostPath lands root-owned; vector runs as uid 1000 and must write checkpoints here
+        - name: init-data-dir
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - chown 1000:1000 /var/lib/vector
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+          volumeMounts:
+            - name: var-lib-vector
+              mountPath: /var/lib/vector
       containers:
         - name: vector
           image: timberio/vector:0.40.1-alpine
@@ -27,6 +47,10 @@ spec:
           args:
             - --config
             - /etc/vector/vector.yaml
+          ports:
+            - name: metrics
+              containerPort: 9598
+              protocol: TCP
           env:
             - name: VECTOR_SELF_NODE_NAME
               valueFrom:
@@ -75,4 +99,6 @@ spec:
             path: /var/log
             type: Directory
         - name: var-lib-vector
-          emptyDir: {}
+          hostPath:
+            path: /var/lib/vector
+            type: DirectoryOrCreate
