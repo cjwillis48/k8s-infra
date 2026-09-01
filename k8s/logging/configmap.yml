@@ -11,6 +11,30 @@ data:
       kubernetes_logs:
         type: kubernetes_logs
         self_node_name: ${VECTOR_SELF_NODE_NAME}
+        # Platform namespaces are ~99% of log volume and are read via kubectl, not Axiom.
+        # First two entries are Vector's defaults — overriding this option drops them.
+        exclude_paths_glob_patterns:
+          - "**/*.gz"
+          - "**/*.tmp"
+          - "/var/log/pods/argocd_*/**"
+          - "/var/log/pods/metallb-system_*/**"
+          - "/var/log/pods/longhorn-system_*/**"
+          - "/var/log/pods/kube-system_*/**"
+          - "/var/log/pods/pgweb_*/**"
+        # Labels and annotations dominate event size; keep only what's worth querying on.
+        pod_annotation_fields:
+          container_id: ""
+          container_image: ""
+          pod_annotations: ""
+          pod_ip: ""
+          pod_ips: ""
+          pod_labels: ""
+          pod_owner: ""
+          pod_uid: ""
+        namespace_annotation_fields:
+          namespace_labels: ""
+        node_annotation_fields:
+          node_labels: ""
 
       internal_metrics:
         type: internal_metrics
