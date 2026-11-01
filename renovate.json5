@@ -1,0 +1,99 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  // Renovate exists here because of the 2026-10-28 cloudflared miss: Homie sat
+  // on a hand-pinned 2026.8.2 below the advisory floor (>= 2026.10.2) while
+  // hermes-infra's Renovate had already bumped Seerr's copy. Pins without an
+  // update path quietly rot. Runs via Mend's hosted app — the repo is public,
+  // so hermes-infra's reason for self-hosting (topology privacy) does not apply.
+  extends: ["config:recommended"],
+  timezone: "America/New_York",
+  dependencyDashboard: true,
+  dependencyDashboardTitle: "Renovate: dependency dashboard",
+
+  // Give a bad release time to be yanked before it reaches the cluster.
+  minimumReleaseAge: "3 days",
+  prConcurrentLimit: 10,
+  prHourlyLimit: 0,
+  rebaseWhen: "conflicted",
+
+  // UNLIKE hermes-infra, MERGING IS DEPLOYING. Every Argo app here has
+  // automated sync with selfHeal + prune, and there is no CI in this repo.
+  prBodyNotes: [
+    "---",
+    "**Merging deploys this.** Argo CD auto-syncs `main` to Homie within minutes.",
+    "Watch it land: `kubectl -n argocd get applications` and the touched workload's pods.",
+  ],
+
+  // Neither manager auto-detects these paths. Git sources pinned to
+  // `targetRevision: main` are not versions, so the argocd manager skips them.
+  kubernetes: { managerFilePatterns: ["/^k8s/.+\\.ya?ml$/"] },
+  argocd: { managerFilePatterns: ["/^k8s/argocd/apps/.+\\.ya?ml$/"] },
+
+  packageRules: [
+    {
+      // Tags, not digests: a tag bump says what changed, a digest bump does not.
+      matchCategories: ["docker"],
+      pinDigests: false,
+    },
+    {
+      // Only container image PATCH bumps automerge — with no CI, merge = prod,
+      // so the blast radius has to stay small. Helm charts (Longhorn,
+      // cert-manager, MetalLB…) and all minors/majors wait for a human.
+      matchManagers: ["kubernetes"],
+      matchUpdateTypes: ["patch"],
+      automerge: true,
+      automergeType: "pr",
+      platformAutomerge: false,
+    },
+    {
+      // Public-facing (the tunnel IS Homie's ingress): patch fast. Last image
+      // rule so it overrides the 3-day default above.
+      matchPackageNames: ["cloudflare/cloudflared"],
+      minimumReleaseAge: "1 day",
+      addLabels: ["public-facing"],
+    },
+    {
+      // Storage and the GitOps controller itself. A bad bump here can take
+      // every PVC or every deploy path down with it; read the upgrade notes.
+      // All three only support upgrading ONE minor at a time, and the first
+      // lookup (2026-11-01) offered k3s v1.31 -> v1.37 in a single jump. So
+      // one PR per minor stream (and patch split from minor): merge in order.
+      matchPackageNames: ["longhorn", "argoproj/argo-cd", "k3s-io/k3s"],
+      labels: ["needs-care"],
+      minimumReleaseAge: "7 days",
+      separateMultipleMinor: true,
+      separateMinorPatch: true,
+    },
+    {
+      // Merging a k3s bump changes nothing until `ansible/playbooks/update.yml`
+      // runs. Say so on the PR instead of the Argo note above.
+      matchPackageNames: ["k3s-io/k3s"],
+      prBodyNotes: [
+        "---",
+        "**This PR does not change the cluster.** Apply with `ansible-playbook ansible/playbooks/update.yml`.",
+        "k3s supports upgrading one minor at a time only — never skip a minor.",
+      ],
+    },
+  ],
+
+  customManagers: [
+    {
+      customType: "regex",
+      description: "Argo CD install manifest (remote kustomize resource)",
+      managerFilePatterns: ["/^k8s/argocd/kustomization\\.yaml$/"],
+      matchStrings: ["argoproj/argo-cd/(?<currentValue>v[^/]+)/manifests/install\\.yaml"],
+      depNameTemplate: "argoproj/argo-cd",
+      datasourceTemplate: "github-releases",
+    },
+    {
+      customType: "regex",
+      description: "k3s version (role defaults + group_vars)",
+      managerFilePatterns: ["/^ansible/.+\\.ya?ml$/"],
+      matchStrings: ["k3s_version:\\s*[\"']?(?<currentValue>v[^\"'\\s]+)[\"']?"],
+      depNameTemplate: "k3s-io/k3s",
+      datasourceTemplate: "github-releases",
+      versioningTemplate: "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\+k3s(?<build>\\d+)$",
+    },
+  ],
+}
