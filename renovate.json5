@@ -45,6 +45,10 @@
       automerge: true,
       automergeType: "pr",
       platformAutomerge: false,
+      // No CI here, and Renovate treats "only renovate/* checks" as pending, so
+      // without this nothing ever automerges (cloudflared #3 sat 7h, 2026-11-01).
+      // minimumReleaseAge is still enforced; it isn't a status check.
+      ignoreTests: true,
     },
     {
       // Public-facing (the tunnel IS Homie's ingress): patch fast. Last image
