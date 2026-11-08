@@ -82,6 +82,10 @@
       minimumReleaseAge: "7 days",
       separateMultipleMinor: true,
       separateMinorPatch: true,
+      // ...but only open the PR when its dashboard box is ticked. Otherwise
+      // every future minor is an open PR at once (7 for k3s on 2026-11-08),
+      // and only the next one is ever mergeable.
+      dependencyDashboardApproval: true,
     },
     {
       // Merging a k3s bump changes nothing until `ansible/playbooks/update.yml`
