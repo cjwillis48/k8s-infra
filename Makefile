@@ -1,4 +1,4 @@
-.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret tailscale update tenants-lint tenants-diff
+.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret tailscale update upgrade-k3s tenants-lint tenants-diff
 
 ANSIBLE_DIR := ansible
 PLAYBOOK_DIR := $(ANSIBLE_DIR)/playbooks
@@ -56,6 +56,10 @@ tailscale:
 # Defer reboots with: ansible-playbook playbooks/update.yml -e update_reboot=false
 update:
 	cd $(ANSIBLE_DIR) && ansible-playbook playbooks/update.yml
+
+# Upgrade K3s to k3s_version, server then agent. Preview with: make upgrade-k3s ARGS=--check
+upgrade-k3s:
+	cd $(ANSIBLE_DIR) && ansible-playbook playbooks/upgrade-k3s.yml $(ARGS)
 
 # Fetch kubeconfig from node-1
 kubeconfig:

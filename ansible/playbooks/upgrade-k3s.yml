@@ -1,0 +1,18 @@
+---
+# Upgrade K3s to k3s_version (bumped by Renovate). Server first, then agent:
+# k3s requires the server to be at least the agent's version, and one minor
+# at a time. Each role re-runs the installer only when the version differs,
+# then waits for the node to be Ready before the next play starts.
+# Usage: make upgrade-k3s
+
+- name: Upgrade K3s server
+  hosts: k3s_servers
+  become: true
+  roles:
+    - k3s_server
+
+- name: Upgrade K3s agent
+  hosts: k3s_agents
+  become: true
+  roles:
+    - k3s_agent
