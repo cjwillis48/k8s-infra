@@ -42,7 +42,7 @@ spec:
               mountPath: /var/lib/vector
       containers:
         - name: vector
-          image: timberio/vector:0.40.1-alpine
+          image: timberio/vector:0.61.0-alpine
           imagePullPolicy: IfNotPresent
           args:
             - --config
