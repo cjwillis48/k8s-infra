@@ -88,12 +88,12 @@
       dependencyDashboardApproval: true,
     },
     {
-      // Merging a k3s bump changes nothing until `ansible/playbooks/update.yml`
+      // Merging a k3s bump changes nothing until `make upgrade-k3s`
       // runs. Say so on the PR instead of the Argo note above.
       matchPackageNames: ["k3s-io/k3s"],
       prBodyNotes: [
         "---",
-        "**This PR does not change the cluster.** Apply with `ansible-playbook ansible/playbooks/update.yml`.",
+        "**This PR does not change the cluster.** Apply with `make upgrade-k3s` (server, then agent), then check both nodes are Ready.",
         "k3s supports upgrading one minor at a time only — never skip a minor.",
       ],
     },

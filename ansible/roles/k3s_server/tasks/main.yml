@@ -25,15 +25,22 @@
     mode: "0600"
   notify: restart k3s
 
-- name: Check if K3s is already installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/k3s
-  register: k3s_binary
+# Compare versions, not just presence: a presence check meant bumping
+# k3s_version never upgraded an existing node. Re-running the installer is the
+# documented manual upgrade; it keeps /etc/rancher/k3s and restarts the service
+# (running pods survive a k3s restart).
+- name: Check installed K3s version
+  ansible.builtin.command:
+    cmd: /usr/local/bin/k3s --version
+  register: k3s_installed
+  failed_when: false
+  changed_when: false
+  check_mode: false
 
-- name: Install K3s server
+- name: Install or upgrade K3s server
   ansible.builtin.shell: |
     curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
-  when: not k3s_binary.stat.exists
+  when: k3s_installed.rc != 0 or k3s_installed.stdout.split()[2] != k3s_version
   environment:
     INSTALL_K3S_EXEC: "server"
 
@@ -44,6 +51,11 @@
   until: k3s_nodes.rc == 0
   retries: 30
   delay: 10
+  changed_when: false
+
+- name: Wait for server node to be Ready
+  ansible.builtin.command:
+    cmd: k3s kubectl wait --for=condition=Ready node/{{ k3s_server_hostname }} --timeout=300s
   changed_when: false
 
 - name: Label server node

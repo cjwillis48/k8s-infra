@@ -12,15 +12,19 @@
     mode: "0600"
   notify: restart k3s-agent
 
-- name: Check if K3s agent is already installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/k3s
-  register: k3s_binary
+# Version check, not presence check: see the matching task in k3s_server.
+- name: Check installed K3s agent version
+  ansible.builtin.command:
+    cmd: /usr/local/bin/k3s --version
+  register: k3s_installed
+  failed_when: false
+  changed_when: false
+  check_mode: false
 
-- name: Install K3s agent
+- name: Install or upgrade K3s agent
   ansible.builtin.shell: |
     curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -
-  when: not k3s_binary.stat.exists
+  when: k3s_installed.rc != 0 or k3s_installed.stdout.split()[2] != k3s_version
   environment:
     INSTALL_K3S_EXEC: "agent"
     K3S_URL: "{{ k3s_server_url }}"
@@ -34,6 +38,12 @@
   until: agent_node.rc == 0
   retries: 30
   delay: 10
+  changed_when: false
+
+- name: Wait for agent node to be Ready
+  ansible.builtin.command:
+    cmd: k3s kubectl wait --for=condition=Ready node/homie-k8s-node-2 --timeout=300s
+  delegate_to: homie-k8s-node-1
   changed_when: false
 
 - name: Label agent node
