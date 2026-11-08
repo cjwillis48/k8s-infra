@@ -49,13 +49,27 @@
       // without this nothing ever automerges (cloudflared #3 sat 7h, 2026-11-01).
       // minimumReleaseAge is still enforced; it isn't a status check.
       ignoreTests: true,
+      // Never queue behind the 10 human PRs. By 2026-11-03 k3s/Argo/Longhorn
+      // filled every slot — the same stall that left Hermes' CVE fixes
+      // "rate-limited" for two months.
+      prConcurrentLimit: 0,
+      branchConcurrentLimit: 0,
     },
     {
       // Public-facing (the tunnel IS Homie's ingress): patch fast. Last image
-      // rule so it overrides the 3-day default above.
+      // rule so it overrides the 3-day default above. cloudflared is CalVer, so
+      // a new month (2026.10.x -> 2026.11.0) is a MINOR — the 2026-10-28 miss
+      // was exactly that jump. Minors automerge too, uncapped like patches.
       matchPackageNames: ["cloudflare/cloudflared"],
+      matchUpdateTypes: ["minor", "patch"],
       minimumReleaseAge: "1 day",
       addLabels: ["public-facing"],
+      automerge: true,
+      automergeType: "pr",
+      platformAutomerge: false,
+      ignoreTests: true,
+      prConcurrentLimit: 0,
+      branchConcurrentLimit: 0,
     },
     {
       // Storage and the GitOps controller itself. A bad bump here can take
