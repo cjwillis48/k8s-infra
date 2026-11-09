@@ -72,12 +72,25 @@
       branchConcurrentLimit: 0,
     },
     {
-      // Storage and the GitOps controller itself. A bad bump here can take
-      // every PVC or every deploy path down with it; read the upgrade notes.
-      // All three only support upgrading ONE minor at a time, and the first
-      // lookup (2026-11-01) offered k3s v1.31 -> v1.37 in a single jump. So
-      // one PR per minor stream (and patch split from minor): merge in order.
-      matchPackageNames: ["longhorn", "argoproj/argo-cd", "k3s-io/k3s"],
+      // Argo CD upgrades itself: a bad bump breaks the tool you'd roll back
+      // with, so no automerge. But unlike k3s/Longhorn it CAN skip minors
+      // (2.12 -> 2.14 notes had nothing that applies here), so one normal PR
+      // to the latest minor. Majors (v3) wait for a dashboard tick.
+      matchPackageNames: ["argoproj/argo-cd"],
+      labels: ["needs-care"],
+      minimumReleaseAge: "7 days",
+    },
+    {
+      matchPackageNames: ["argoproj/argo-cd"],
+      matchUpdateTypes: ["major"],
+      dependencyDashboardApproval: true,
+    },
+    {
+      // Storage and the cluster itself. Both only support upgrading ONE minor
+      // at a time, and the first lookup (2026-11-01) offered k3s v1.31 -> v1.37
+      // in a single jump. So one PR per minor stream (and patch split from
+      // minor): merge in order, read the upgrade notes.
+      matchPackageNames: ["longhorn", "k3s-io/k3s"],
       labels: ["needs-care"],
       minimumReleaseAge: "7 days",
       separateMultipleMinor: true,
