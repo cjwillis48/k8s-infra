@@ -4,7 +4,7 @@ namespace: argocd
 
 resources:
   # Pinned Argo CD install manifest.
-  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.2.12/manifests/install.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.6.1/manifests/install.yaml
   - namespace.yml
   - ingress.yml
   - network-policies.yml
