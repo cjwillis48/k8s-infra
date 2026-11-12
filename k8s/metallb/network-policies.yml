@@ -24,3 +24,28 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: metallb-system
+---
+# The kube-apiserver (host network on node-1) calls the controller's
+# validating webhook on 9443. Without this, default-deny blocks it and any
+# change to IPAddressPool/L2Advertisement fails with 502 (found 2026-11-11).
+# Sources: node-1's LAN IP and its flannel address (host -> remote pod).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-apiserver-webhook
+  namespace: metallb-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: controller
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 192.168.6.200/32
+        - ipBlock:
+            cidr: 10.42.0.0/32
+      ports:
+        - protocol: TCP
+          port: 9443
