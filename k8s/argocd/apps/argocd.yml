@@ -9,6 +9,10 @@ spec:
     automated:
       selfHeal: true
       prune: true
+    # Required from Argo CD 3.3: the ApplicationSet CRD is too big for
+    # client-side apply (last-applied annotation > 256KiB).
+    syncOptions:
+      - ServerSideApply=true
   source:
     repoURL: https://github.com/cjwillis48/k8s-infra.git
     targetRevision: main
