@@ -86,6 +86,12 @@
       dependencyDashboardApproval: true,
     },
     {
+      // A bad controller can't decrypt any SealedSecret. Human merge, read notes.
+      matchPackageNames: ["bitnami-labs/sealed-secrets"],
+      labels: ["needs-care"],
+      minimumReleaseAge: "7 days",
+    },
+    {
       // Storage and the cluster itself. Both only support upgrading ONE minor
       // at a time, and the first lookup (2026-11-01) offered k3s v1.31 -> v1.37
       // in a single jump. So one PR per minor stream (and patch split from
@@ -120,6 +126,17 @@
       matchStrings: ["argoproj/argo-cd/(?<currentValue>v[^/]+)/manifests/install\\.yaml"],
       depNameTemplate: "argoproj/argo-cd",
       datasourceTemplate: "github-releases",
+    },
+    {
+      // Was invisible until 2026-11-13 and sat at v0.27.3 (latest v0.41.2).
+      // The repo also tags helm-vX.Y.Z chart releases; extractVersion drops them.
+      customType: "regex",
+      description: "Sealed Secrets controller manifest (remote kustomize resource)",
+      managerFilePatterns: ["/^k8s/sealed-secrets/kustomization\\.yaml$/"],
+      matchStrings: ["bitnami-labs/sealed-secrets/releases/download/(?<currentValue>v[^/]+)/controller\\.yaml"],
+      depNameTemplate: "bitnami-labs/sealed-secrets",
+      datasourceTemplate: "github-releases",
+      extractVersionTemplate: "^(?<version>v.+)$",
     },
     {
       customType: "regex",
