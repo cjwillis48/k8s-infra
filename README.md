@@ -135,7 +135,14 @@ make status-logging
 
 K8s secrets are managed via [Bitnami Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets). SealedSecret resources are safe to commit to git — they can only be decrypted by the controller running in the cluster.
 
-The controller's public cert is stored at `k8s/sealed-secrets/sealed-secrets-pub.pem` for offline sealing. Only commit the sealed output — ArgoCD syncs it to the cluster.
+The controller's public cert is stored at `k8s/sealed-secrets/sealed-secrets-pub.pem` for offline sealing (`make seal-secret`). Key rotation is disabled (`--key-renew-period=0`), so this cert stays current. Only commit the sealed output — ArgoCD syncs it to the cluster.
+
+#### Rebuild: sealing keys
+
+The controller's private keys are the only thing that can decrypt the `*.sealed.yml` files in git. A rebuilt cluster without them gets a new key, and every sealed secret has to be re-created from plaintext.
+
+- **Backup:** `make backup-sealing-keys` writes all keys to `~/.config/homie/sealed-secrets-keys.json` (plaintext, mode 600). Keep a copy in the password manager. With rotation off, re-run only if a key is added by hand.
+- **Restore:** `make deploy` applies that file to `kube-system` before installing the controller, which then loads the old keys. Put the file back from the password manager first (or set `SEALING_KEYS=/path`). If the file is missing, `make deploy` stops; `ALLOW_NEW_SEALING_KEY=1 make deploy` proceeds with a fresh key.
 
 #### Preferred workflow: `mcp-sealed-secrets` MCP server
 

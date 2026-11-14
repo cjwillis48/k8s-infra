@@ -4,3 +4,12 @@ namespace: kube-system
 
 resources:
   - https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.41.2/controller.yaml
+
+patches:
+  # No monthly key rotation: the backed-up key set (make backup-sealing-keys)
+  # stays complete, and sealed-secrets-pub.pem never goes stale.
+  - target: {kind: Deployment, name: sealed-secrets-controller}
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["--key-renew-period=0"]
