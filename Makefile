@@ -1,4 +1,4 @@
-.PHONY: bootstrap provision deploy deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret tailscale update upgrade-k3s tenants-lint tenants-diff
+.PHONY: bootstrap provision deploy backup-sealing-keys deploy-argocd backup-blog reset kubeconfig status status-argocd status-logging seal-secret tailscale update upgrade-k3s tenants-lint tenants-diff
 
 ANSIBLE_DIR := ansible
 PLAYBOOK_DIR := $(ANSIBLE_DIR)/playbooks
@@ -15,6 +15,7 @@ provision:
 # Bootstrap cluster: ArgoCD + sealed-secrets (all other namespaces managed by ArgoCD)
 deploy: kubeconfig
 	kubectl apply -f k8s/argocd/namespace.yml
+	./scripts/sealing-keys.sh restore
 	kubectl apply -k k8s/sealed-secrets/
 	$(MAKE) deploy-argocd
 
@@ -23,7 +24,12 @@ deploy-argocd:
 	kubectl apply -f k8s/argocd/namespace.yml
 	kubectl apply -n argocd -k k8s/argocd/
 
-# Seal a K8s secret using the controller's public cert
+# Export the Sealed Secrets private keys (plaintext!) for the password manager.
+# Restored automatically by `make deploy`. See README "Rebuild: sealing keys".
+backup-sealing-keys:
+	./scripts/sealing-keys.sh backup
+
+# Seal a K8s secret using the controller's public cert (works offline)
 # Usage: make seal-secret IN=path/to/secret.yml OUT=path/to/sealed.yml
 seal-secret:
 	kubeseal --format yaml \
