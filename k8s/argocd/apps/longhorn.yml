@@ -10,13 +10,20 @@ spec:
   sources:
     - repoURL: https://charts.longhorn.io
       chart: longhorn
-      targetRevision: 1.12.2
+      targetRevision: 1.13.0
       helm:
         releaseName: longhorn
         valuesObject:
           defaultSettings:
             backupTarget: "s3://k8s-longhorn-backups@auto/"
             backupTargetCredentialSecret: longhorn-backup-creds
+          # New in 1.13: leader + standby. The default 3 is one more than nodes.
+          longhornGlobalManager:
+            replicas: 2
+          # 1.13 grants the CSI controller cluster-wide Secret `get` by default.
+          # It's only needed for provisioner-secret StorageClass params; none here.
+          csi:
+            allowControllerSecretAccess: false
     - repoURL: https://github.com/cjwillis48/k8s-infra.git
       targetRevision: main
       path: k8s/longhorn
