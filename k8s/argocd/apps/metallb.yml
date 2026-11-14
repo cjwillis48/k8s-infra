@@ -10,9 +10,18 @@ spec:
   sources:
     - repoURL: https://metallb.github.io/metallb
       chart: metallb
-      targetRevision: 0.15.3
+      targetRevision: 0.16.2
       helm:
         releaseName: metallb
+        # L2 only (see k8s/metallb/pool.yml). 0.16 bundles frr-k8s by default
+        # (extra DaemonSet + webhook); speaker.frr adds 3 sidecars per node.
+        # Neither does anything without BGP.
+        valuesObject:
+          frrk8s:
+            enabled: false
+          speaker:
+            frr:
+              enabled: false
     - repoURL: https://github.com/cjwillis48/k8s-infra.git
       targetRevision: main
       path: k8s/metallb
