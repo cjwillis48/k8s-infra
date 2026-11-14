@@ -17,6 +17,9 @@ spec:
           defaultSettings:
             backupTarget: "s3://k8s-longhorn-backups@auto/"
             backupTargetCredentialSecret: longhorn-backup-creds
+            # Live-upgrade volume engines after each Longhorn bump. Off by default,
+            # which left every volume on engine v1.8.1 through manager 1.10.
+            concurrentAutomaticEngineUpgradePerNodeLimit: 1
           # New in 1.13: leader + standby. The default 3 is one more than nodes.
           longhornGlobalManager:
             replicas: 2
