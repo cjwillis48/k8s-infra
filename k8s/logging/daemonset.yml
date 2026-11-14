@@ -18,6 +18,8 @@ spec:
       tolerations:
         - operator: Exists
       securityContext:
+        # Group-readable Secret files for uid 1000 (no effect on hostPath).
+        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       initContainers:
@@ -42,7 +44,7 @@ spec:
               mountPath: /var/lib/vector
       containers:
         - name: vector
-          image: timberio/vector:0.40.1-alpine
+          image: timberio/vector:0.61.0-alpine
           imagePullPolicy: IfNotPresent
           args:
             - --config
@@ -56,16 +58,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            - name: AXIOM_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: axiom-credentials
-                  key: AXIOM_TOKEN
-            - name: AXIOM_DATASET
-              valueFrom:
-                secretKeyRef:
-                  name: axiom-credentials
-                  key: AXIOM_DATASET
           resources:
             requests:
               cpu: 25m
@@ -85,6 +77,9 @@ spec:
             - name: vector-config
               mountPath: /etc/vector
               readOnly: true
+            - name: axiom-credentials
+              mountPath: /etc/vector-secrets
+              readOnly: true
             - name: var-log
               mountPath: /var/log
               readOnly: true
@@ -94,6 +89,10 @@ spec:
         - name: vector-config
           configMap:
             name: vector-config
+        - name: axiom-credentials
+          secret:
+            secretName: axiom-credentials
+            defaultMode: 0440
         - name: var-log
           hostPath:
             path: /var/log

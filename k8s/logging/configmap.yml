@@ -7,10 +7,17 @@ data:
   vector.yaml: |
     data_dir: /var/lib/vector
 
+    # Vector >= 0.57 no longer interpolates env vars in config files (0.61 sent
+    # the literal placeholder as the token -> 401). Read the Secret as files.
+    secret:
+      axiom:
+        type: directory
+        path: /etc/vector-secrets
+        remove_trailing_whitespace: true
+
     sources:
       kubernetes_logs:
         type: kubernetes_logs
-        self_node_name: ${VECTOR_SELF_NODE_NAME}
         # Platform namespaces are ~99% of log volume and are read via kubectl, not Axiom.
         # First two entries are Vector's defaults — overriding this option drops them.
         exclude_paths_glob_patterns:
@@ -44,11 +51,11 @@ data:
         type: http
         inputs:
           - kubernetes_logs
-        uri: https://api.axiom.co/v1/datasets/${AXIOM_DATASET}/ingest
+        uri: https://api.axiom.co/v1/datasets/SECRET[axiom.AXIOM_DATASET]/ingest
         method: post
         auth:
           strategy: bearer
-          token: ${AXIOM_TOKEN}
+          token: SECRET[axiom.AXIOM_TOKEN]
         compression: gzip
         encoding:
           codec: json
