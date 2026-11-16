@@ -81,15 +81,10 @@
       // Argo CD upgrades itself: a bad bump breaks the tool you'd roll back
       // with, so no automerge. But unlike k3s/Longhorn it CAN skip minors
       // (2.12 -> 2.14 notes had nothing that applies here), so one normal PR
-      // to the latest minor. Majors (v3) wait for a dashboard tick.
+      // to the latest minor (majors too: a normal PR, never automerged).
       matchPackageNames: ["argoproj/argo-cd"],
       labels: ["needs-care"],
       minimumReleaseAge: "7 days",
-    },
-    {
-      matchPackageNames: ["argoproj/argo-cd"],
-      matchUpdateTypes: ["major"],
-      dependencyDashboardApproval: true,
     },
     {
       // A bad controller can't decrypt any SealedSecret. Human merge, read notes.
@@ -107,10 +102,11 @@
       minimumReleaseAge: "7 days",
       separateMultipleMinor: true,
       separateMinorPatch: true,
-      // ...but only open the PR when its dashboard box is ticked. Otherwise
-      // every future minor is an open PR at once (7 for k3s on 2026-11-08),
-      // and only the next one is ever mergeable.
-      dependencyDashboardApproval: true,
+      // No dashboard approval gate (removed 2026-11-15). It was added when k3s
+      // was 6 minors behind and 7 PRs opened at once; now that we're current,
+      // each new minor is one PR that requests review, which is a
+      // notification, unlike a dashboard box nobody checks. If a backlog
+      // ever builds again, merge the oldest PR first.
     },
     {
       // Merging a k3s bump changes nothing until `make upgrade-k3s`
