@@ -17,6 +17,12 @@
   prHourlyLimit: 0,
   rebaseWhen: "conflicted",
 
+  // Request the owner's review on PRs that wait for a human: a review request
+  // notifies even without watching the repo, and mail can be filtered on
+  // X-GitHub-Reason: review_requested. assignAutomerge stays false (default),
+  // so PRs Renovate merges itself stay quiet.
+  reviewers: ["cjwillis48"],
+
   // UNLIKE hermes-infra, MERGING IS DEPLOYING. Every Argo app here has
   // automated sync with selfHeal + prune, and there is no CI in this repo.
   prBodyNotes: [
