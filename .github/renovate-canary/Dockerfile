@@ -1,2 +1,2 @@
 # Throwaway: checks Renovate PRs request review and reach email. Delete after.
-FROM busybox:1.36.1
+FROM busybox:1.38.0
